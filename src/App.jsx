@@ -1,13 +1,20 @@
-import './App.css';
+import Navbar from './components/Navbar';
+import { Routes, Route } from 'react-router-dom';
+import Learn from './pages/Learn';
+import Lesson from './pages/lesson';
+import Home from './pages/index';
 
-function App() {
+const App = () => {
   return (
-    <>
-      <h1 className="flex items-center justify-center min-h-screen bg-blue-500 text-white text-2xl">
-        Vite + React123
-      </h1>
-    </>
+    <div>
+      {/* <Navbar></Navbar> */}
+      <Routes>
+        <Route path="/" element={<Home />} />
+        <Route path="/learn" element={<Learn />} />
+        <Route path="/lesson" element={<Lesson />} />
+      </Routes>
+    </div>
   );
-}
+};
 
 export default App;
