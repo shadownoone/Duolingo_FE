@@ -1,19 +1,19 @@
 import React, { useState } from 'react';
-import { Link } from 'react-router-dom'; // Thay thế Next.js Link
+import { Link } from 'react-router-dom'; 
 import { GlobeSvg } from '../components/Svgs';
 import { LanguageHeader } from '../components/LanguageHeader';
-import { LoginScreen } from '../components/LoginScreen';
+
 // import { LanguageCarousel } from "../components/LanguageCarousel";
 import bgSnow from '../../src/assets/bg-snow.svg'; // Import ảnh trực tiếp
 
 const Home = () => {
-  const [loginScreenState, setLoginScreenState] = useState(null);
-  console.log(GlobeSvg); // Kiểm tra xem component có tồn tại không
+
+
 
   return (
     <main
       className="flex min-h-screen flex-col items-center justify-center bg-[#235390] text-white"
-      style={{ backgroundImage: `url(${bgSnow})` }} // Thay thế next/image
+      style={{ backgroundImage: `url(${bgSnow})` }} 
     >
       <LanguageHeader />
       <div className="flex w-full flex-col items-center justify-center gap-3 px-4 py-16 md:flex-row md:gap-36">
@@ -25,25 +25,22 @@ const Home = () => {
           </p>
           <div className="mx-auto mt-4 flex w-fit flex-col items-center gap-3">
             <Link
-              to="/register"
+              to="/languageList"
               className="w-full rounded-2xl border-b-4 border-green-700 bg-green-600 px-10 py-3 text-center font-bold uppercase transition hover:border-green-600 hover:bg-green-500 md:min-w-[320px]"
             >
               Get started
             </Link>
-            <button
+            <Link
               className="w-full rounded-2xl border-2 border-b-4 border-[#042c60] bg-[#235390] px-8 py-3 font-bold uppercase transition hover:bg-[#204b82] md:min-w-[320px]"
-              onClick={() => setLoginScreenState('LOGIN')}
+                to="/login"
             >
               I already have an account
-            </button>
+            </Link>
           </div>
         </div>
       </div>
       {/* <LanguageCarousel /> */}
-      <LoginScreen
-        loginScreenState={loginScreenState}
-        setLoginScreenState={setLoginScreenState}
-      />
+
     </main>
   );
 };
