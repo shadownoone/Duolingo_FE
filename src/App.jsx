@@ -9,8 +9,26 @@ import LanguageList from "./pages/languageList";
 import Shop from "./pages/Shop";
 import Profile from "./pages/Profile";
 import Leaderboards from "./pages/leaderboard";
+import { useEffect } from "react";
+import { getCurrentUser } from "./services/Users/userService";
+import { useDispatch } from "react-redux";
+import { addCurrentUser } from "./features/user/userSlice";
 
 const App = () => {
+  const dispatch = useDispatch();
+
+  useEffect(() => {
+    const fetchUser = async () => {
+      const currentUser = await getCurrentUser();
+
+      console.log(currentUser);
+
+      dispatch(addCurrentUser(currentUser.data));
+    };
+
+    fetchUser();
+  }, []);
+
   return (
     <div>
       {/* <Navbar></Navbar> */}

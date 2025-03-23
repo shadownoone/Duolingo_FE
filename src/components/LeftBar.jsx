@@ -3,6 +3,7 @@ import React, { useState } from "react";
 
 import { GlobeIconSvg, PodcastIconSvg } from "./Svgs";
 import { useBottomBarItems } from "./BottomBar";
+import { handleLogout } from "../services/Log/loginService";
 
 const LeftBarMoreMenuSvg = (props) => {
   return (
@@ -93,6 +94,12 @@ export const LeftBar = ({ selectedTab }) => {
                   <PodcastIconSvg className="h-10 w-10" />
                   Podcast
                 </a>
+                <button
+                  className="flex items-center gap-4 px-5 py-2 text-left uppercase hover:bg-gray-100"
+                  onClick={handleLogout}
+                >
+                  Logout
+                </button>
               </div>
               {/* <div className="flex flex-col border-t-2 border-gray-300 py-2">
                 {!loggedIn && (

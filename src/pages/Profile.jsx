@@ -15,15 +15,20 @@ import {
   ProfileTimeJoinedSvg,
   SettingsGearSvg,
 } from "../components/Svgs";
+import { useSelector } from "react-redux";
+import { toDateString } from "../utils/dateString";
 
 const Profile = () => {
+  const currentUser = useSelector((state) => state.user.currentUser);
+  console.log(currentUser);
+
   return (
     <div>
       <ProfileTopBar />
       <LeftBar selectedTab="Profile" />
       <div className="flex justify-center gap-3 pt-14 md:ml-24 lg:ml-64 lg:gap-12">
         <div className="flex w-full max-w-4xl flex-col gap-5 p-5">
-          <ProfileTopSection />
+          <ProfileTopSection currentUser={currentUser} />
           <ProfileStatsSection />
           <ProfileFriendsSection />
         </div>
@@ -51,16 +56,13 @@ const ProfileTopBar = () => {
   );
 };
 
-const ProfileTopSection = () => {
-  const name = "John Doe";
-  const username = "johndoe";
+const ProfileTopSection = ({ currentUser }) => {
   const language = {
     name: "Vietnamese",
     nativeName: "Tiếng Việt",
     viewBox: "0 1188 82 66",
     code: "vi",
   };
-  const joinedAt = "2021-09-01";
 
   const followingCount = 0;
   const followersCount = 0;
@@ -74,17 +76,19 @@ const ProfileTopSection = () => {
   return (
     <section className="flex flex-row-reverse border-b-2 border-gray-200 pb-8 md:flex-row md:gap-8">
       <div className="flex h-20 w-20 items-center justify-center rounded-full border-2 border-dashed border-gray-400 text-3xl font-bold text-gray-400 md:h-44 md:w-44 md:text-7xl">
-        {username.charAt(0).toUpperCase()}
+        {currentUser.username.charAt(0).toUpperCase()}
       </div>
       <div className="flex grow flex-col justify-between gap-3">
         <div className="flex flex-col gap-2">
           <div>
-            <h1 className="text-2xl font-bold">{name}</h1>
-            <div className="text-sm text-gray-400">{username}</div>
+            <h1 className="text-2xl font-bold">{currentUser.name}</h1>
+            <div className="text-sm text-gray-400">{currentUser.username}</div>
           </div>
           <div className="flex items-center gap-3">
             <ProfileTimeJoinedSvg />
-            <span className="text-gray-500">{`Joined ${joinedAt}`}</span>
+            <span className="text-gray-500">{`Joined ${toDateString(
+              currentUser.created_at
+            )}`}</span>
           </div>
           <div className="flex items-center gap-3">
             <ProfileFriendsSvg />
