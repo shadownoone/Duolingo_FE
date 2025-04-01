@@ -9,10 +9,12 @@ import {
   TreasureClosedSvg,
   TreasureProgressSvg,
 } from "./Svgs";
-import { Link } from "react-router-dom";
+import { Link, useNavigate } from "react-router-dom";
+
 import { Flag } from "./Flag";
 import dayjs from "dayjs";
 import { Calendar } from "./Calendar";
+import { useSelector } from "react-redux";
 
 export const RightBar = () => {
   const [languagesShown, setLanguagesShown] = useState(false);
@@ -225,13 +227,24 @@ const XpProgressSection = () => {
 };
 
 const CreateAProfileSection = ({}) => {
+  const currentUser = useSelector((state) => state.user.currentUser);
+  const navigate = useNavigate();
+  if (currentUser) {
+    return null;
+  }
   return (
     <article className="flex flex-col gap-5 rounded-2xl border-2 border-gray-200 p-6 font-bold">
       <h2 className="text-xl">Create a profile to save your progress!</h2>
-      <button className="rounded-2xl border-b-4 border-green-600 bg-green-500 py-3 uppercase text-white transition hover:border-green-500 hover:bg-green-400">
+      <button
+        onClick={() => navigate("/login")}
+        className="rounded-2xl border-b-4 border-green-600 bg-green-500 py-3 uppercase text-white transition hover:border-green-500 hover:bg-green-400"
+      >
         Create a profile
       </button>
-      <button className="rounded-2xl border-b-4 border-blue-500 bg-blue-400 py-3 uppercase text-white transition hover:border-blue-400 hover:bg-blue-300">
+      <button
+        onClick={() => navigate("/login")}
+        className="rounded-2xl border-b-4 border-blue-500 bg-blue-400 py-3 uppercase text-white transition hover:border-blue-400 hover:bg-blue-300"
+      >
         Sign in
       </button>
     </article>

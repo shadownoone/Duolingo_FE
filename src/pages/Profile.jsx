@@ -17,10 +17,25 @@ import {
 } from "../components/Svgs";
 import { useSelector } from "react-redux";
 import { toDateString } from "../utils/dateString";
+import UpdateProfile from "../components/UpdateProfile";
+import LoginScreen from "./LoginScreen";
 
 const Profile = () => {
+  const [showEditModal, setShowEditModal] = useState(false);
+
+  const openEditModal = () => {
+    setShowEditModal(true);
+  };
+
+  // Hàm đóng modal
+  const closeEditModal = () => {
+    setShowEditModal(false);
+  };
+
   const currentUser = useSelector((state) => state.user.currentUser);
-  console.log(currentUser);
+  if (!currentUser) {
+    return <LoginScreen />;
+  }
 
   return (
     <div>
@@ -28,13 +43,22 @@ const Profile = () => {
       <LeftBar selectedTab="Profile" />
       <div className="flex justify-center gap-3 pt-14 md:ml-24 lg:ml-64 lg:gap-12">
         <div className="flex w-full max-w-4xl flex-col gap-5 p-5">
-          <ProfileTopSection currentUser={currentUser} />
+          <ProfileTopSection
+            currentUser={currentUser}
+            openEditModal={openEditModal}
+          />
           <ProfileStatsSection />
           <ProfileFriendsSection />
         </div>
       </div>
       <div className="pt-[90px]"></div>
       <BottomBar selectedTab="Profile" />
+      {/* Modal Edit Profile */}
+      {showEditModal && (
+        <ModalOverlay onClose={closeEditModal}>
+          <UpdateProfile currentUser={currentUser} onClose={closeEditModal} />
+        </ModalOverlay>
+      )}
     </div>
   );
 };
@@ -56,7 +80,7 @@ const ProfileTopBar = () => {
   );
 };
 
-const ProfileTopSection = ({ currentUser }) => {
+const ProfileTopSection = ({ currentUser, openEditModal }) => {
   const language = {
     name: "Vietnamese",
     nativeName: "Tiếng Việt",
@@ -76,13 +100,26 @@ const ProfileTopSection = ({ currentUser }) => {
   return (
     <section className="flex flex-row-reverse border-b-2 border-gray-200 pb-8 md:flex-row md:gap-8">
       <div className="flex h-20 w-20 items-center justify-center rounded-full border-2 border-dashed border-gray-400 text-3xl font-bold text-gray-400 md:h-44 md:w-44 md:text-7xl">
-        {currentUser.username.charAt(0).toUpperCase()}
+        {currentUser?.avatar ? (
+          <img
+            src={currentUser.avatar}
+            alt="Avatar"
+            className="h-full w-full object-cover rounded-full"
+          />
+        ) : (
+          (currentUser?.username?.charAt(0) || "U").toUpperCase()
+        )}
       </div>
       <div className="flex grow flex-col justify-between gap-3">
         <div className="flex flex-col gap-2">
           <div>
             <h1 className="text-2xl font-bold">{currentUser.name}</h1>
             <div className="text-sm text-gray-400">{currentUser.username}</div>
+          </div>
+          <div className="flex items-center gap-3">
+            <div className="text-sm text-gray-400">
+              {currentUser.last_name} {currentUser.first_name}
+            </div>
           </div>
           <div className="flex items-center gap-3">
             <ProfileTimeJoinedSvg />
@@ -98,14 +135,34 @@ const ProfileTopSection = ({ currentUser }) => {
 
         <Flag language={language} width={40} />
       </div>
-      <Link
-        href="/settings/account"
+      <button
+        onClick={openEditModal}
         className="hidden items-center gap-2 self-start rounded-2xl border-b-4 border-blue-500 bg-blue-400 px-5 py-3 font-bold uppercase text-white transition hover:brightness-110 md:flex"
       >
         <EditPencilSvg />
         Edit profile
-      </Link>
+      </button>
     </section>
+  );
+};
+
+const ModalOverlay = ({ children, onClose }) => {
+  return (
+    <div
+      className="fixed inset-0 z-50 flex items-center justify-center bg-black/50"
+      onClick={onClose}
+    >
+      {/* 
+        Dùng onClick={onClose} cho div overlay để click ra ngoài cũng đóng modal.
+        Nhưng để form không bị đóng khi click vào chính nó, ta ngăn nổi bọt (stopPropagation).
+      */}
+      <div
+        className="relative w-[600px] rounded bg-white p-5 shadow-md"
+        onClick={(e) => e.stopPropagation()}
+      >
+        {children}
+      </div>
+    </div>
   );
 };
 

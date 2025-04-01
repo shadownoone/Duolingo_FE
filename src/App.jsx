@@ -13,6 +13,7 @@ import { useEffect } from "react";
 import { getCurrentUser } from "./services/Users/userService";
 import { useDispatch } from "react-redux";
 import { addCurrentUser } from "./features/user/userSlice";
+import NotFound from "./pages/notFound";
 
 const App = () => {
   const dispatch = useDispatch();
@@ -42,6 +43,7 @@ const App = () => {
         <Route path="/shop" element={<Shop />} />
         <Route path="/profile" element={<Profile />} />
         <Route path="/leaderboard" element={<Leaderboards />} />
+        <Route path="/notfound" element={<NotFound />} />
       </Routes>
     </div>
   );

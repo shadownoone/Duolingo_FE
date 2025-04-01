@@ -30,12 +30,12 @@ const LoginScreen = () => {
   };
 
   const handleGoogleLogin = () => {
-    // const apiUrl = import.meta.env.VITE_API_URL
-    // if (!apiUrl) {
-    //   console.error('API URL is not defined')
-    //   return
-    // }
-    // window.open(`${apiUrl}/auth/google`, '_self')
+    const apiUrl = import.meta.env.VITE_API_BASE_URL;
+    if (!apiUrl) {
+      console.error("API URL is not defined");
+      return;
+    }
+    window.open(`${apiUrl}/auth/google`, "_self");
   };
 
   const handleFacebookLogin = () => {
