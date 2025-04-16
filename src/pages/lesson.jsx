@@ -1,4 +1,4 @@
-import React, { useRef, useState } from "react";
+import React, { useEffect, useRef, useState } from "react";
 import {
   AppleSvg,
   BigCloseSvg,
@@ -9,7 +9,8 @@ import {
   LessonTopBarHeart,
   WomanSvg,
 } from "../components/Svgs";
-import { Link } from "react-router-dom";
+import { Link, useNavigate, useParams } from "react-router-dom";
+import { getLessonDetail } from "../services/Lessons/lessonService";
 
 // Danh sách các câu hỏi
 const lessonProblems = [
@@ -36,35 +37,64 @@ const lessonProblems = [
 ];
 
 const Lesson = () => {
-  const [currentQuestionIndex, setCurrentQuestionIndex] = useState(0); // Câu hỏi hiện tại
+  const { lessonId } = useParams();
+
+  const [lesson, setLesson] = useState(null);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(null);
+
+  const [currentQuestionIndex, setCurrentQuestionIndex] = useState(0);
   const [selectedAnswer, setSelectedAnswer] = useState(null);
   const [correctAnswerShown, setCorrectAnswerShown] = useState(false);
   const [isAnswerCorrect, setIsAnswerCorrect] = useState(false);
-  const startTime = useRef(Date.now()); // Thời gian bắt đầu
-  const endTime = useRef(null); // Thời gian kết thúc
-  const [correctAnswerCount, setCorrectAnswerCount] = useState(0); // Đếm số câu đúng
-  const [lessonComplete, setLessonComplete] = useState(false); // Kiểm tra hoàn thành bài học
+  const startTime = useRef(Date.now());
+  const endTime = useRef(null);
+  const [correctAnswerCount, setCorrectAnswerCount] = useState(0);
+  const [lessonComplete, setLessonComplete] = useState(false);
   const [questionResults, setQuestionResults] = useState([]);
   const [reviewLessonShown, setReviewLessonShown] = useState(false);
 
-  const hearts = 3; // Fix cứng dữ liệu tạm thời
+  const hearts = 3;
+
+  useEffect(() => {
+    if (!lessonId) return;
+    getLessonDetail(lessonId)
+      .then((res) => {
+        console.log("Lesson detail API response:", res);
+        if (res.code === 0) {
+          setLesson(res.data);
+        } else {
+          setError(res.message);
+        }
+      })
+      .catch((err) => {
+        console.error("Error calling getLessonDetail:", err);
+        setError(err.message);
+      })
+      .finally(() => {
+        setLoading(false);
+      });
+  }, [lessonId]);
+
+  const currentExercise =
+    lesson && lesson.exercises && lesson.exercises.length > 0
+      ? lesson.exercises[currentQuestionIndex]
+      : null;
 
   const onCheckAnswer = () => {
     setCorrectAnswerShown(true);
-    const isCorrect =
-      selectedAnswer === lessonProblems[currentQuestionIndex].correctAnswer;
+    const correctIndex = currentExercise.options.findIndex(
+      (opt) => opt.is_correct
+    );
+    const isCorrect = selectedAnswer === correctIndex;
     setIsAnswerCorrect(isCorrect);
 
     setQuestionResults((prevResults) => [
       ...prevResults,
       {
-        question: lessonProblems[currentQuestionIndex].question,
-        yourResponse:
-          lessonProblems[currentQuestionIndex].answers[selectedAnswer].name,
-        correctResponse:
-          lessonProblems[currentQuestionIndex].answers[
-            lessonProblems[currentQuestionIndex].correctAnswer
-          ].name,
+        question: currentExercise.question_content,
+        yourResponse: currentExercise.options[selectedAnswer].option_text,
+        correctResponse: currentExercise.options[correctIndex].option_text,
       },
     ]);
 
@@ -78,15 +108,13 @@ const Lesson = () => {
     setSelectedAnswer(null);
     setCorrectAnswerShown(false);
 
-    if (currentQuestionIndex < lessonProblems.length - 1) {
-      setCurrentQuestionIndex((prev) => prev + 1); // Chuyển sang câu tiếp theo
+    if (currentQuestionIndex < lesson.exercises.length - 1) {
+      setCurrentQuestionIndex((prev) => prev + 1);
     } else {
-      endTime.current = Date.now(); // Lưu thời gian kết thúc bài học
-      setLessonComplete(true); // Đánh dấu bài học đã hoàn thành
+      endTime.current = Date.now();
+      setLessonComplete(true);
     }
   };
-
-  const currentProblem = lessonProblems[currentQuestionIndex];
 
   if (lessonComplete) {
     return (
@@ -98,9 +126,15 @@ const Lesson = () => {
         setReviewLessonShown={setReviewLessonShown}
         reviewLessonShown={reviewLessonShown}
         questionResults={questionResults}
+        languageId={lesson.Course.language_id}
       />
     );
   }
+  if (loading) return <div>Loading lesson details...</div>;
+  if (error) return <div>Error: {error}</div>;
+  if (!lesson) return <div>No lesson data available.</div>;
+  if (!currentExercise)
+    return <div>No exercise data available for this lesson.</div>;
 
   return (
     <div className="flex min-h-screen flex-col gap-5 px-4 py-5 sm:px-0 sm:py-0">
@@ -118,13 +152,15 @@ const Lesson = () => {
               role="progressbar"
               aria-valuemin={0}
               aria-valuemax={1}
-              aria-valuenow={(currentQuestionIndex + 1) / lessonProblems.length}
+              aria-valuenow={
+                (currentQuestionIndex + 1) / lesson.exercises.length
+              }
             >
               <div
                 className="h-full rounded-full bg-green-500 transition-all duration-700"
                 style={{
                   width: `${
-                    ((currentQuestionIndex + 1) / lessonProblems.length) * 100
+                    ((currentQuestionIndex + 1) / lesson.exercises.length) * 100
                   }%`,
                 }}
               />
@@ -143,7 +179,9 @@ const Lesson = () => {
         {/* Câu hỏi */}
         <section className="flex max-w-2xl grow flex-col gap-5 self-center sm:items-center sm:justify-center sm:gap-24 sm:px-5">
           <h1 className="self-start text-2xl font-bold sm:text-3xl">
-            {currentProblem.question}
+            {currentExercise
+              ? currentExercise.question_content
+              : "Loading question..."}
           </h1>
 
           {/* Các lựa chọn */}
@@ -151,23 +189,25 @@ const Lesson = () => {
             className="grid grid-cols-2 gap-2 sm:grid-cols-3"
             role="radiogroup"
           >
-            {currentProblem.answers.map((answer, i) => (
-              <div
-                key={i}
-                className={
-                  i === selectedAnswer
-                    ? "cursor-pointer rounded-xl border-2 border-b-4 border-blue-300 bg-blue-100 p-4 text-blue-400"
-                    : "cursor-pointer rounded-xl border-2 border-b-4 border-gray-200 p-4 hover:bg-gray-100"
-                }
-                role="radio"
-                aria-checked={i === selectedAnswer}
-                tabIndex={0}
-                onClick={() => setSelectedAnswer(i)}
-              >
-                {answer.icon}
-                <h2 className="text-center">{answer.name}</h2>
-              </div>
-            ))}
+            {currentExercise.options && currentExercise.options.length > 0
+              ? currentExercise.options.map((option, i) => (
+                  <div
+                    key={option.id}
+                    className={
+                      i === selectedAnswer
+                        ? "cursor-pointer rounded-xl border-2 border-b-4 border-blue-300 bg-blue-100 p-4 text-blue-400"
+                        : "cursor-pointer rounded-xl border-2 border-b-4 border-gray-200 p-4 hover:bg-gray-100"
+                    }
+                    role="radio"
+                    aria-checked={i === selectedAnswer}
+                    tabIndex={0}
+                    onClick={() => setSelectedAnswer(i)}
+                  >
+                    {/* {answer.icon} */}
+                    <h2 className="text-center">{option.option_text}</h2>
+                  </div>
+                ))
+              : "Loading options..."}
           </div>
         </section>
       </div>
@@ -197,7 +237,9 @@ const Lesson = () => {
         <FeedbackMessage
           isAnswerCorrect={isAnswerCorrect}
           correctAnswer={
-            currentProblem.answers[currentProblem.correctAnswer].name
+            currentExercise.options[
+              currentExercise.options.findIndex((opt) => opt.is_correct)
+            ].option_text
           }
           onFinish={onFinish}
         />
@@ -254,12 +296,18 @@ const LessonComplete = ({
   setReviewLessonShown,
   reviewLessonShown,
   questionResults,
+  languageId,
 }) => {
   const totalXP = correctAnswerCount;
-  const totalTime = Math.floor((endTime - startTime) / 1000); // Thời gian tính bằng giây
+  const totalTime = Math.floor((endTime - startTime) / 1000);
   const minutes = Math.floor(totalTime / 60);
   const seconds = totalTime % 60;
   const accuracy = Math.round((correctAnswerCount / totalQuestions) * 100);
+  const navigate = useNavigate();
+
+  const handleContinue = () => {
+    navigate(`/learn/${languageId}`);
+  };
 
   return (
     <div className="flex min-h-screen flex-col gap-5 px-4 py-5 sm:px-0 sm:py-0">
@@ -303,15 +351,12 @@ const LessonComplete = ({
           </button>
 
           {/* Nút Continue */}
-          <Link
+          <button
             className="flex w-full items-center justify-center rounded-2xl border-b-4 border-green-600 bg-green-500 p-3 font-bold uppercase text-white transition hover:brightness-105 sm:min-w-[150px] sm:max-w-fit"
-            to="/learn"
-            onClick={() => {
-              // Xử lý cập nhật XP, Lingots, LessonsCompleted nếu cần
-            }}
+            onClick={handleContinue}
           >
             Continue
-          </Link>
+          </button>
         </div>
       </section>
 

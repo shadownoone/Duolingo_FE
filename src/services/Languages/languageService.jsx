@@ -5,3 +5,9 @@ export const getAllLanguages = async () => {
     return res.data;
   });
 };
+
+export const getCourseByLanguage = async (languageId) => {
+  return await axiosClients.get(`/languages/${languageId}`).then((res) => {
+    return res.data;
+  });
+};

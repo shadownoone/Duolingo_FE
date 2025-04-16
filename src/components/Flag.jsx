@@ -1,12 +1,17 @@
-import React from 'react';
-import flagsSvg from '../../public/flags.svg'; // Import trực tiếp file SVG
+import React from "react";
+import ReactCountryFlag from "react-country-flag";
 
-export const Flag = ({ language, width = 84 }) => {
-  const height = width * (19.3171 / 24);
-
+export const Flag = ({ code, size = "2em" }) => {
+  if (!code) return null;
   return (
-    <svg viewBox={language.viewBox} style={{ height, width }}>
-      <image height={flagsSvg.height} href={flagsSvg} width={flagsSvg.width} />
-    </svg>
+    <ReactCountryFlag
+      countryCode={code.toUpperCase()} // Đảm bảo mã quốc gia là chữ hoa
+      svg // Dùng định dạng SVG
+      style={{
+        width: size,
+        height: size,
+      }}
+      title={code}
+    />
   );
 };

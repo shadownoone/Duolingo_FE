@@ -1,11 +1,19 @@
+import { useSelector } from "react-redux";
 import { Link } from "react-router-dom";
 
 export const useBottomBarItems = () => {
+  const currentLanguage = useSelector(
+    (state) => state.language.currentLanguage
+  );
+
+  const learnHref = currentLanguage?.language_id
+    ? `/learn/${currentLanguage.language_id}`
+    : "/languageList";
   const loggedIn = true;
   const bottomBarItems = [
     {
       name: "Learn",
-      href: "/learn",
+      href: learnHref,
       icon: (
         <svg
           width="32"

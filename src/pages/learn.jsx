@@ -25,12 +25,50 @@ import {
   StarSvg,
   UpArrowSvg,
 } from "../components/Svgs";
-import { units } from "../utils/units";
-import { Link, useNavigate } from "react-router-dom";
 
-const UnitSection = ({ unit }) => {
+import { Link, useNavigate, useParams } from "react-router-dom";
+import { getCourseByLanguage } from "../services/Languages/languageService";
+import { getLessonByCourse } from "../services/Courses/courseService";
+import { useDispatch } from "react-redux";
+import { setCurrentLanguage } from "../features/language/languageSlice";
+
+const UnitSection = ({ courseId }) => {
   const navigate = useNavigate();
+  const [unit, setUnit] = useState(null);
   const [selectedTile, setSelectedTile] = useState(null);
+  const [lessonsCompleted, setLessonsCompleted] = useState(0);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    if (!courseId) return;
+    getLessonByCourse(courseId)
+      .then((res) => {
+        if (res.code === 0) {
+          const lessons = Array.isArray(res.data) ? res.data : [res.data];
+
+          const transformedUnit = {
+            unitNumber: 1,
+            description: "Course Lessons",
+            backgroundColor: "bg-[#58cc02]",
+            textColor: "text-[#58cc02]",
+            borderColor: "border-[#46a302]",
+            tiles: lessons.map((lesson) => ({
+              type: "star",
+              description: lesson.lesson_title,
+              lessonId: lesson.lesson_id,
+            })),
+          };
+
+          setUnit(transformedUnit);
+        }
+      })
+      .catch((error) => {
+        console.error("getLessonByCourse error:", error);
+      })
+      .finally(() => {
+        setLoading(false);
+      });
+  }, [courseId]);
 
   useEffect(() => {
     const unselectTile = () => setSelectedTile(null);
@@ -40,14 +78,15 @@ const UnitSection = ({ unit }) => {
 
   const closeTooltip = useCallback(() => setSelectedTile(null), []);
 
-  const lessonsCompleted = 0;
-  const lingots = 0;
   const increaseLessonsCompleted = () => {
     // Increase the number of lessons completed
   };
   const increaseLingots = () => {
     // Increase the number of lingots
   };
+
+  if (loading) return <div>Loading...</div>;
+  if (!unit) return <div>No unit data available.</div>;
 
   return (
     <>
@@ -59,7 +98,7 @@ const UnitSection = ({ unit }) => {
       />
       <div className="relative mb-8 mt-[67px] flex max-w-2xl flex-col items-center gap-4">
         {unit.tiles.map((tile, i) => {
-          const status = tileStatus(tile, lessonsCompleted);
+          const status = tileStatus(tile, unit.tiles, lessonsCompleted);
           return (
             <Fragment key={i}>
               {(() => {
@@ -157,6 +196,8 @@ const UnitSection = ({ unit }) => {
                         <TileIcon tileType={tile.type} status={status} />
                       </div>
                     );
+                  default:
+                    return null;
                 }
               })()}
               <TileTooltip
@@ -178,14 +219,104 @@ const UnitSection = ({ unit }) => {
                       return `Unit ${unit.unitNumber} review`;
                     case "treasure":
                       return "";
+                    default:
+                      return "";
                   }
                 })()}
                 status={status}
+                lessonId={tile.lessonId}
                 closeTooltip={closeTooltip}
               />
             </Fragment>
           );
         })}
+      </div>
+    </>
+  );
+};
+
+const Learn = () => {
+  const { languageId } = useParams();
+  const dispatch = useDispatch();
+  const [language, setLanguage] = useState(null);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(null);
+
+  console.log("Learn: languageId =", languageId);
+
+  useEffect(() => {
+    const fetchLanguageData = async () => {
+      try {
+        const response = await getCourseByLanguage(languageId);
+        if (response.code === 0) {
+          dispatch(
+            setCurrentLanguage({
+              language_id: +languageId,
+              language_code: response.data.language_code,
+              language_name: response.data.language_name,
+              description: response.data.description,
+            })
+          );
+          setLanguage(response.data);
+        } else {
+          setError(response.message);
+        }
+      } catch (err) {
+        setError(err.message);
+      } finally {
+        setLoading(false);
+      }
+    };
+    fetchLanguageData();
+  }, [languageId, dispatch]);
+
+  if (loading) return <p>Loading...</p>;
+  if (error) return <p>Error: {error}</p>;
+  if (!language) return <p>No language data found.</p>;
+
+  return (
+    <>
+      <LeftBar selectedTab="Learn" languageId={languageId} />
+      <div className="flex justify-center gap-3 pt-14 sm:p-6 sm:pt-10 md:ml-24 lg:ml-64 lg:gap-12">
+        <div className="flex max-w-2xl grow flex-col">
+          {/* Hiển thị danh sách course của ngôn ngữ */}
+          <section className="grid grid-cols-1 gap-4">
+            {language.courses && language.courses.length > 0 ? (
+              language.courses.map((course) => (
+                <div
+                  key={course.course_id}
+                  className="rounded-xl p-4  text-white border-2 "
+                >
+                  <h2 className="text-xl font-bold">{course.course_name}</h2>
+                  <p>{course.description}</p>
+
+                  <UnitSection courseId={course.course_id} />
+                </div>
+              ))
+            ) : (
+              <p>No courses available for this language.</p>
+            )}
+          </section>
+
+          {/* Phần footer: Practice & Jump to top */}
+          <div className="relative mt-8">
+            <Link
+              to="/lesson?practice"
+              className="absolute left-4 flex h-16 w-16 items-center justify-center rounded-full border-2 border-b-4 border-gray-200 bg-white transition hover:bg-gray-50 hover:brightness-90 md:left-0"
+            >
+              <span className="sr-only">Practice exercise</span>
+              <PracticeExerciseSvg className="h-8 w-8" />
+            </Link>
+            <button
+              className="absolute right-4 flex h-14 w-14 items-center justify-center rounded-2xl border-2 border-b-4 border-gray-200 bg-white transition hover:bg-gray-50 hover:brightness-90 md:right-0"
+              onClick={() => window.scrollTo(0, 0)}
+            >
+              <span className="sr-only">Jump to top</span>
+              <UpArrowSvg />
+            </button>
+          </div>
+        </div>
+        <RightBar />
       </div>
     </>
   );
@@ -199,6 +330,9 @@ const TileTooltip = ({
   description,
   status,
   closeTooltip,
+  backgroundColor,
+  textColor,
+  lessonId,
 }) => {
   const tileTooltipRef = useRef(null);
 
@@ -216,9 +350,9 @@ const TileTooltip = ({
     return () => window.removeEventListener("click", containsTileTooltip, true);
   }, [selectedTile, closeTooltip, index]);
 
-  const unit = units.find((unit) => unit.unitNumber === unitNumber);
-  const activeBackgroundColor = unit?.backgroundColor || "bg-green-500";
-  const activeTextColor = unit?.textColor || "text-green-500";
+  // const unit = units.find((unit) => unit.unitNumber === unitNumber);
+  const activeBackgroundColor = backgroundColor || "bg-green-500";
+  const activeTextColor = textColor || "text-green-500";
 
   return (
     <div
@@ -269,7 +403,7 @@ const TileTooltip = ({
 
         {status === "ACTIVE" ? (
           <Link
-            to="/lesson"
+            to={`/lesson/${lessonId}`}
             className={[
               "flex w-full items-center justify-center rounded-xl border-b-4 border-gray-200 bg-white p-3 uppercase",
               activeTextColor,
@@ -286,7 +420,7 @@ const TileTooltip = ({
           </button>
         ) : (
           <Link
-            to="/lesson"
+            to={`/lesson/${lessonId}`}
             className="flex w-full items-center justify-center rounded-xl border-b-4 border-yellow-200 bg-white p-3 uppercase text-yellow-400"
           >
             Practice +5 XP
@@ -393,11 +527,11 @@ const TileIcon = ({ tileType, status }) => {
   }
 };
 
-const tileStatus = (tile, lessonsCompleted) => {
+const tileStatus = (tile, unitTiles, lessonsCompleted) => {
   const lessonsPerTile = 4;
   const tilesCompleted = Math.floor(lessonsCompleted / lessonsPerTile);
-  const tiles = units.flatMap((unit) => unit.tiles);
-  const tileIndex = tiles.findIndex((t) => t === tile);
+
+  const tileIndex = unitTiles.findIndex((t) => t === tile);
 
   if (tileIndex < tilesCompleted) {
     return "COMPLETE";
@@ -507,38 +641,4 @@ const getTileTooltipLeftOffset = ({ index, unitNumber, tilesLength }) => {
   return offsets[index % offsets.length] ?? tileTooltipLeftOffsets[0];
 };
 
-const Learn = () => {
-  return (
-    <>
-      <LeftBar selectedTab="Learn" />
-      <div className="flex justify-center gap-3 pt-14 sm:p-6 sm:pt-10 md:ml-24 lg:ml-64 lg:gap-12">
-        <div className="flex max-w-2xl grow flex-col">
-          {units.map((unit) => (
-            <UnitSection unit={unit} key={unit.unitNumber} />
-          ))}
-          <div className="sticky bottom-28 left-0 right-0 flex items-end justify-between">
-            <Link
-              to="/lesson?practice"
-              className="absolute left-4 flex h-16 w-16 items-center justify-center rounded-full border-2 border-b-4 border-gray-200 bg-white transition hover:bg-gray-50 hover:brightness-90 md:left-0"
-            >
-              <span className="sr-only">Practice exercise</span>
-              <PracticeExerciseSvg className="h-8 w-8" />
-            </Link>
-            {scrollY > 100 && (
-              <button
-                className="absolute right-4 flex h-14 w-14 items-center justify-center self-end rounded-2xl border-2 border-b-4 border-gray-200 bg-white transition hover:bg-gray-50 hover:brightness-90 md:right-0"
-                onClick={() => scrollTo(0, 0)}
-              >
-                <span className="sr-only">Jump to top</span>
-                <UpArrowSvg />
-              </button>
-            )}
-          </div>
-        </div>
-
-        <RightBar />
-      </div>
-    </>
-  );
-};
 export default Learn;

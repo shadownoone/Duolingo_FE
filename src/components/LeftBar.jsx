@@ -1,9 +1,10 @@
-import { Link } from "react-router-dom";
+import { Link, useNavigate } from "react-router-dom";
 import React, { useState } from "react";
 
 import { GlobeIconSvg, PodcastIconSvg } from "./Svgs";
 import { useBottomBarItems } from "./BottomBar";
 import { handleLogout } from "../services/Log/loginService";
+import { useDispatch, useSelector } from "react-redux";
 
 const LeftBarMoreMenuSvg = (props) => {
   return (
@@ -24,20 +25,35 @@ const LeftBarMoreMenuSvg = (props) => {
 };
 
 export const LeftBar = ({ selectedTab }) => {
+  const currentLanguage = useSelector(
+    (state) => state.language.currentLanguage
+  );
+  const navigate = useNavigate();
+  console.log("currentLanguage", currentLanguage.language_id);
+
   const [moreMenuShown, setMoreMenuShown] = useState(false);
   const [loginScreenState, setLoginScreenState] = useState("HIDDEN");
 
   const bottomBarItems = useBottomBarItems();
 
+  const handleLogoClick = () => {
+    if (currentLanguage && currentLanguage.language_id) {
+      navigate(`/learn/${currentLanguage.language_id}`);
+    } else {
+      // fallback: nếu user chưa chọn ngôn ngữ, có thể về trang chọn ngôn ngữ
+      navigate("/languageList");
+    }
+  };
+
   return (
     <>
       <nav className="fixed bottom-0 left-0 top-0 hidden flex-col gap-5 border-r-2 border-[#e5e5e5] bg-white p-3 md:flex lg:w-64 lg:p-5">
-        <Link
-          to="/learn"
+        <button
+          onClick={handleLogoClick}
           className="mb-5 ml-5 mt-5 hidden text-3xl font-bold text-[#58cc02] lg:block"
         >
           Duolingo
-        </Link>
+        </button>
         <ul className="flex flex-col items-stretch gap-3">
           {bottomBarItems.map((item) => (
             <li key={item.href} className="flex flex-1">
