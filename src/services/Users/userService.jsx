@@ -17,3 +17,15 @@ export const createUser = async (data) => {
     return res.data;
   });
 };
+
+export const enrollLanguage = async (data) => {
+  return await axiosClients.post("/users/userLanguage", data).then((res) => {
+    return res.data;
+  });
+};
+
+export const getUserLanguages = async () => {
+  return await axiosClients.get("/users/getLanguage").then((res) => {
+    return res.data;
+  });
+};

@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import {
   EmptyFireSvg,
   EmptyGemSvg,
@@ -15,21 +15,32 @@ import { Flag } from "./Flag";
 import dayjs from "dayjs";
 import { Calendar } from "./Calendar";
 import { useSelector } from "react-redux";
+import { getUserLanguages } from "../services/Users/userService";
 
 export const RightBar = () => {
+  const navigate = useNavigate();
+  const [courses, setCourses] = useState([]);
   const [languagesShown, setLanguagesShown] = useState(false);
-  const language = {
-    name: "Vietnamese",
-    nativeName: "Tiếng Việt",
-    viewBox: "0 1188 82 66",
-    code: "vi",
-  };
+
+  const current = useSelector((state) => state.language.currentLanguage);
 
   const streak = 3;
   const lingots = 10;
   const [gemsShown, setGemsShown] = useState(false);
   const [streakShown, setStreakShown] = useState(false);
   const [now, setNow] = useState(dayjs());
+
+  useEffect(() => {
+    getUserLanguages()
+      .then(({ data }) => {
+        setCourses(data);
+        console.log("Courses:", data);
+      })
+      .catch((err) => {
+        console.error("Lấy courses lỗi:", err);
+      });
+  }, []);
+
   return (
     <>
       <aside className="sticky top-0 hidden w-96 flex-col gap-6 self-start sm:flex">
@@ -43,8 +54,15 @@ export const RightBar = () => {
             role="button"
             tabIndex={0}
           >
-            <Flag language={language} width={45} />
-            <div>{language.name}</div>
+            {current ? (
+              <>
+                <Flag code={current.language_code} size="45px" />
+                <div>{current.language_name}</div>
+              </>
+            ) : (
+              <div className="text-gray-400">No course selected</div>
+            )}
+
             <div
               className="absolute top-full z-10 rounded-2xl border-2 border-gray-300 bg-white"
               style={{
@@ -56,10 +74,18 @@ export const RightBar = () => {
               <h2 className="px-5 py-3 font-bold uppercase text-gray-400">
                 My courses
               </h2>
-              <button className="flex w-full items-center gap-3 border-t-2 border-gray-300 bg-blue-100 px-5 py-3 text-left font-bold">
-                <Flag language={language} width={45} />
-                <span className="text-blue-500">{language.name}</span>
-              </button>
+              {courses.map((c) => (
+                <button
+                  key={c.language.language_id}
+                  className="flex w-full items-center gap-3 border-t border-gray-300 px-5 py-3 text-left font-bold hover:bg-gray-100"
+                  onClick={() => navigate(`/learn/${c.language.language_id}`)}
+                >
+                  <Flag code={c.language.language_code} size="45px" />
+                  <span className="text-blue-500">
+                    {c.language.language_name}
+                  </span>
+                </button>
+              ))}
               <Link
                 className="flex w-full items-center gap-3 rounded-b-2xl border-t-2 border-gray-300 px-5 py-3 text-left font-bold hover:bg-gray-100"
                 to={"/languageList"}

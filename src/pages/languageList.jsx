@@ -6,9 +6,15 @@ import { Flag } from "../components/Flag";
 import { getAllLanguages } from "../services/Languages/languageService";
 import { useDispatch, useSelector } from "react-redux";
 import {
+  addUserLanguage,
   setCurrentLanguage,
   setLanguages,
+  setUserLanguages,
 } from "../features/language/languageSlice";
+import {
+  enrollLanguage,
+  getUserLanguages,
+} from "../services/Users/userService";
 
 function LanguageList() {
   const dispatch = useDispatch();
@@ -17,23 +23,52 @@ function LanguageList() {
   // Lấy mảng languages từ Redux
   const languages = useSelector((state) => state.language.languages);
 
+  const userLanguages = useSelector((s) => s.language.userLanguages);
+
   useEffect(() => {
-    const fetchLanguage = async () => {
+    const fetchBoth = async () => {
       try {
-        const response = await getAllLanguages();
-        console.log("API response:", response);
-        if (response.code === 0 && response.data) {
-          // Lưu mảng language vào Redux
-          dispatch(setLanguages(response.data.data));
-        } else {
-          console.error("Dữ liệu trả về không hợp lệ:", response);
+        // 1) fetch all languages
+        const allRes = await getAllLanguages();
+        if (allRes.code === 0 && allRes.data) {
+          dispatch(setLanguages(allRes.data.data));
         }
-      } catch (error) {
-        console.error("Lỗi khi lấy danh sách languages:", error);
+
+        // 2) fetch user languages
+        const userRes = await getUserLanguages();
+        // nếu service return { code, message, data: [...] }
+        const arr = userRes.data ?? userRes;
+        dispatch(setUserLanguages(arr));
+      } catch (err) {
+        console.error(err);
       }
     };
-    fetchLanguage();
+    fetchBoth();
   }, [dispatch]);
+
+  const handleSelect = async (lang) => {
+    try {
+      // CHECK trên userLanguages, không phải languages
+      const alreadyEnrolled = userLanguages.some(
+        (l) => l.language.language_id === lang.language_id
+      );
+
+      if (!alreadyEnrolled) {
+        // enroll mới, lưu luôn vào userLanguages
+        const newEntry = await enrollLanguage({
+          language_id: lang.language_id,
+        });
+        dispatch(addUserLanguage(newEntry));
+      }
+
+      // set current + điều hướng
+      dispatch(setCurrentLanguage(lang));
+      navigate(`/learn/${lang.language_id}`);
+    } catch (err) {
+      console.error(err);
+      alert(err.response?.data?.message || err.message);
+    }
+  };
 
   return (
     <main
@@ -49,10 +84,7 @@ function LanguageList() {
           {languages.map((language) => (
             <button
               key={language.language_id}
-              onClick={() => {
-                dispatch(setCurrentLanguage(language));
-                navigate(`/learn/${language.language_id}`);
-              }}
+              onClick={() => handleSelect(language)}
               className="flex cursor-pointer flex-col items-center gap-4 rounded-2xl border-2 border-b-4 border-gray-400 px-5 py-8 text-xl font-bold hover:bg-gray-300 hover:bg-opacity-20"
             >
               <Flag code={language.language_code} size="40px" />
