@@ -5,12 +5,14 @@ import {
   BoySvg,
   CloseSvg,
   DoneSvg,
+  LessonFastForwardStartSvg,
   LessonTopBarEmptyHeart,
   LessonTopBarHeart,
   WomanSvg,
 } from "../components/Svgs";
-import { Link, useNavigate, useParams } from "react-router-dom";
+import { Link, useLocation, useNavigate, useParams } from "react-router-dom";
 import { getLessonDetail } from "../services/Lessons/lessonService";
+import { completeLesson } from "../services/UserProgress/UserProgressService";
 
 // Danh sách các câu hỏi
 const lessonProblems = [
@@ -54,13 +56,28 @@ const Lesson = () => {
   const [questionResults, setQuestionResults] = useState([]);
   const [reviewLessonShown, setReviewLessonShown] = useState(false);
 
+  const { search } = useLocation();
+  const fastForwardUnit = new URLSearchParams(search).get("fast-forward");
+
+  if (fastForwardUnit) {
+    return (
+      <LessonFastForwardStart
+        unitNumber={fastForwardUnit}
+        onJump={() => {
+          navigate(
+            `/learn/${lesson.Course.language_id}?unit=${fastForwardUnit}`
+          );
+        }}
+      />
+    );
+  }
+
   const hearts = 3;
 
   useEffect(() => {
     if (!lessonId) return;
     getLessonDetail(lessonId)
       .then((res) => {
-        console.log("Lesson detail API response:", res);
         if (res.code === 0) {
           setLesson(res.data);
         } else {
@@ -119,6 +136,7 @@ const Lesson = () => {
   if (lessonComplete) {
     return (
       <LessonComplete
+        lessonId={lessonId}
         correctAnswerCount={correctAnswerCount}
         totalQuestions={lessonProblems.length}
         startTime={startTime.current}
@@ -289,6 +307,7 @@ const FeedbackMessage = ({ isAnswerCorrect, correctAnswer, onFinish }) => (
 );
 
 const LessonComplete = ({
+  lessonId,
   correctAnswerCount,
   totalQuestions,
   startTime,
@@ -305,8 +324,17 @@ const LessonComplete = ({
   const accuracy = Math.round((correctAnswerCount / totalQuestions) * 100);
   const navigate = useNavigate();
 
-  const handleContinue = () => {
-    navigate(`/learn/${languageId}`);
+  const handleContinue = async () => {
+    try {
+      // gọi API lưu tiến độ
+      const res = await completeLesson(lessonId);
+    } catch (err) {
+      console.error("Lưu tiến độ thất bại:", err);
+      // bạn có thể show toast hoặc thông báo lỗi ở đây
+    } finally {
+      // rồi mới chuyển sang màn Learn
+      navigate(`/learn/${languageId}`);
+    }
   };
 
   return (
@@ -455,6 +483,37 @@ const ReviewLesson = ({
           ))}
         </div>
       </div>
+    </div>
+  );
+};
+
+const LessonFastForwardStart = ({ unitNumber, onJump }) => {
+  return (
+    <div className="flex min-h-screen flex-col px-5 py-8 text-center">
+      <div className="flex grow flex-col items-center justify-center gap-5">
+        <LessonFastForwardStartSvg />
+        <h1 className="text-lg font-bold">Want to jump to Unit ?</h1>
+        <p className="text-sm text-gray-400">
+          {`Pass the test to jump ahead. We won't make it easy for you though.`}
+        </p>
+      </div>
+      <div className="flex flex-col gap-5"></div>
+      <section className="border-gray-200 sm:border-t-2 sm:p-10">
+        <div className="mx-auto flex max-w-5xl flex-col-reverse items-center gap-5 sm:flex-row sm:justify-between">
+          <Link
+            to={`/learn/${unitNumber}`}
+            className="font-bold uppercase text-blue-400 transition hover:brightness-110"
+          >
+            Maybe later
+          </Link>
+          <button
+            onClick={onJump}
+            className="w-full rounded-2xl border-b-4 border-blue-500 bg-blue-400 p-3 font-bold uppercase text-white transition hover:brightness-110 sm:min-w-[150px] sm:max-w-fit"
+          >
+            {`Let's go`}
+          </button>
+        </div>
+      </section>
     </div>
   );
 };

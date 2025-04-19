@@ -29,7 +29,6 @@ export const LeftBar = ({ selectedTab }) => {
     (state) => state.language.currentLanguage
   );
   const navigate = useNavigate();
-  console.log("currentLanguage", currentLanguage.language_id);
 
   const [moreMenuShown, setMoreMenuShown] = useState(false);
   const [loginScreenState, setLoginScreenState] = useState("HIDDEN");

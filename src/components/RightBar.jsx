@@ -16,8 +16,12 @@ import dayjs from "dayjs";
 import { Calendar } from "./Calendar";
 import { useSelector } from "react-redux";
 import { getUserLanguages } from "../services/Users/userService";
+import { getUserProgress } from "../services/UserProgress/UserProgressService";
 
 export const RightBar = () => {
+  1;
+  const goalXp = 50;
+  const [xpToday, setXpToday] = useState(0);
   const navigate = useNavigate();
   const [courses, setCourses] = useState([]);
   const [languagesShown, setLanguagesShown] = useState(false);
@@ -34,11 +38,24 @@ export const RightBar = () => {
     getUserLanguages()
       .then(({ data }) => {
         setCourses(data);
-        console.log("Courses:", data);
       })
       .catch((err) => {
         console.error("Lấy courses lỗi:", err);
       });
+  }, []);
+
+  useEffect(() => {
+    getUserProgress()
+      .then((res) => {
+        if (res.code === 0) {
+          // Lọc progress của hôm nay, rồi sum xp
+          const sumToday = res.data
+            .filter((p) => dayjs(p.completed_at).isSame(dayjs(), "day"))
+            .reduce((acc, p) => acc + Number(p.xp), 0);
+          setXpToday(sumToday);
+        }
+      })
+      .catch(console.error);
   }, []);
 
   return (
@@ -172,9 +189,9 @@ export const RightBar = () => {
         </article>
 
         {/* Daily Quests */}
-        <DailyQuestsSection />
+        <DailyQuestsSection goalXp={goalXp} xpToday={xpToday} />
         {/* EXP */}
-        <XpProgressSection />
+        <XpProgressSection goalXp={goalXp} xpToday={xpToday} />
 
         <CreateAProfileSection />
       </aside>
@@ -182,10 +199,7 @@ export const RightBar = () => {
   );
 };
 
-const DailyQuestsSection = () => {
-  const goalXp = 50; // Mục tiêu điểm kinh nghiệm
-  const xpToday = 30;
-
+const DailyQuestsSection = ({ goalXp, xpToday }) => {
   return (
     <article className="flex flex-col gap-5 rounded-2xl border-2 border-gray-200 p-6 font-bold text-gray-700">
       <h2 className="text-xl">Daily Quests</h2>
@@ -216,9 +230,7 @@ const DailyQuestsSection = () => {
   );
 };
 
-const XpProgressSection = () => {
-  const goalXp = 50; // Mục tiêu điểm kinh nghiệm
-  const xpToday = 30;
+const XpProgressSection = ({ goalXp, xpToday }) => {
   return (
     <article className="flex flex-col gap-5 rounded-2xl border-2 border-gray-200 p-6 font-bold text-gray-700">
       <div className="flex items-center justify-between">
