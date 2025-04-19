@@ -151,7 +151,7 @@ const UnitSection = ({ courseId, unitNumber, locked }) => {
                           "relative -mb-4 h-[93px] w-[98px]",
                           getTileLeftClassName({
                             index: i,
-                            unitNumber: unit.unitNumber,
+                            unitNumber,
                             tilesLength: unit.tiles.length,
                           }),
                         ].join(" ")}
@@ -348,22 +348,13 @@ const Learn = () => {
                 const unitNumber = idx + 1;
                 const prevCourseId = language.courses[idx - 1]?.course_id;
                 const prevLessons = courseLessonsMap[prevCourseId] || [];
-                console.log(
-                  `Unit ${unitNumber}:`,
-                  "prevLessons =",
-                  prevLessons,
-                  "completedLessons =",
-                  completedLessons
-                );
 
-                // Điều kiện gốc (unit 1 luôn mở, unit N mở nếu unit N-1 đã hoàn thành)
                 const baseUnlocked =
                   idx === 0 ||
                   prevLessons.every((lessonId) =>
                     completedLessons.includes(lessonId)
                   );
 
-                // Nếu có ?unit=<n> trong URL, cho phép mở tất cả unit ≤ n
                 const isForced = forcedUnit > 0 && unitNumber <= forcedUnit;
 
                 const isUnlocked = forcedUnit ? isForced : baseUnlocked;
@@ -512,9 +503,6 @@ const getTileLeftClassName = ({ index, unitNumber, tilesLength }) => {
     "left-[70px]",
     "left-[45px]",
   ];
-  if (index >= tilesLength - 1) {
-    return "left-0";
-  }
 
   const classNames =
     unitNumber % 2 === 1

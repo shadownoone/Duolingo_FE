@@ -13,3 +13,9 @@ export const getUserProgress = async () => {
     return res.data;
   });
 };
+
+export const leaderBoard = async () => {
+  return await axiosClients.get(`/userProgress/leaderboard`).then((res) => {
+    return res.data;
+  });
+};

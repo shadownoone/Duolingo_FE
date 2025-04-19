@@ -20,7 +20,6 @@ function LanguageList() {
   const dispatch = useDispatch();
   const navigate = useNavigate();
 
-  // Lấy mảng languages từ Redux
   const languages = useSelector((state) => state.language.languages);
 
   const userLanguages = useSelector((s) => s.language.userLanguages);
@@ -28,15 +27,13 @@ function LanguageList() {
   useEffect(() => {
     const fetchBoth = async () => {
       try {
-        // 1) fetch all languages
         const allRes = await getAllLanguages();
         if (allRes.code === 0 && allRes.data) {
           dispatch(setLanguages(allRes.data.data));
         }
 
-        // 2) fetch user languages
         const userRes = await getUserLanguages();
-        // nếu service return { code, message, data: [...] }
+
         const arr = userRes.data ?? userRes;
         dispatch(setUserLanguages(arr));
       } catch (err) {
@@ -61,12 +58,13 @@ function LanguageList() {
         dispatch(addUserLanguage(newEntry));
       }
 
-      // set current + điều hướng
       dispatch(setCurrentLanguage(lang));
       navigate(`/learn/${lang.language_id}`);
     } catch (err) {
-      console.error(err);
-      alert(err.response?.data?.message || err.message);
+      if (err.response?.status === 401) {
+        alert("Bạn cần đăng nhập để tiếp tục");
+        navigate("/login");
+      }
     }
   };
 
