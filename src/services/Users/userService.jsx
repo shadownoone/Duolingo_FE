@@ -29,3 +29,9 @@ export const getUserLanguages = async () => {
     return res.data;
   });
 };
+
+export const userStreak = async (data) => {
+  return await axiosClients.post("/users/practice", data).then((res) => {
+    return res.data;
+  });
+};

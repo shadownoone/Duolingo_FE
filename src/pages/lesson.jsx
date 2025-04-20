@@ -41,6 +41,8 @@ const lessonProblems = [
 const Lesson = () => {
   const { lessonId } = useParams();
 
+  const navigate = useNavigate();
+
   const [lesson, setLesson] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
@@ -55,6 +57,8 @@ const Lesson = () => {
   const [lessonComplete, setLessonComplete] = useState(false);
   const [questionResults, setQuestionResults] = useState([]);
   const [reviewLessonShown, setReviewLessonShown] = useState(false);
+
+  const [hearts, setHearts] = useState(3);
 
   const { search } = useLocation();
   const fastForwardUnit = new URLSearchParams(search).get("fast-forward");
@@ -71,8 +75,6 @@ const Lesson = () => {
       />
     );
   }
-
-  const hearts = 3;
 
   useEffect(() => {
     if (!lessonId) return;
@@ -105,6 +107,13 @@ const Lesson = () => {
     );
     const isCorrect = selectedAnswer === correctIndex;
     setIsAnswerCorrect(isCorrect);
+
+    if (!isCorrect) {
+      setHearts((h) => Math.max(h - 1, 0));
+    } else {
+      // nếu đúng thì cộng điểm như cũ
+      setCorrectAnswerCount((prev) => prev + 1);
+    }
 
     setQuestionResults((prevResults) => [
       ...prevResults,
@@ -160,11 +169,19 @@ const Lesson = () => {
         {/* Thanh tiến trình */}
         <div className="w-full max-w-5xl sm:mt-8 sm:px-5">
           <header className="flex items-center gap-4">
-            <button className="text-gray-400">
+            <button
+              className="text-gray-400 rounded-full p-2 hover:bg-gray-100"
+              onClick={() => {
+                if (
+                  window.confirm("Are you sure you want to exit this lesson?")
+                ) {
+                  navigate(`/learn/${lesson.Course.language_id}`);
+                }
+              }}
+            >
               <CloseSvg />
               <span className="sr-only">Exit lesson</span>
             </button>
-
             <div
               className="h-4 grow rounded-full bg-gray-200"
               role="progressbar"
@@ -183,12 +200,11 @@ const Lesson = () => {
                 }}
               />
             </div>
-
-            {[1, 2, 3].map((heart) =>
-              heart <= hearts ? (
-                <LessonTopBarHeart key={heart} />
+            {[1, 2, 3].map((n) =>
+              n <= hearts ? (
+                <LessonTopBarHeart key={n} />
               ) : (
-                <LessonTopBarEmptyHeart key={heart} />
+                <LessonTopBarEmptyHeart key={n} />
               )
             )}
           </header>
@@ -203,10 +219,7 @@ const Lesson = () => {
           </h1>
 
           {/* Các lựa chọn */}
-          <div
-            className="grid grid-cols-2 gap-2 sm:grid-cols-3"
-            role="radiogroup"
-          >
+          <div className="grid grid-cols-2 gap-4" role="radiogroup">
             {currentExercise.options && currentExercise.options.length > 0
               ? currentExercise.options.map((option, i) => (
                   <div

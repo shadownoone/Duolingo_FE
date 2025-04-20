@@ -4,6 +4,8 @@ import {
   EmptyGemSvg,
   FireSvg,
   GemSvg,
+  LessonTopBarEmptyHeart,
+  LessonTopBarHeart,
   LightningProgressSvg,
   LingotsTreasureChestSvg,
   TreasureClosedSvg,
@@ -15,11 +17,17 @@ import { Flag } from "./Flag";
 import dayjs from "dayjs";
 import { Calendar } from "./Calendar";
 import { useSelector } from "react-redux";
-import { getUserLanguages } from "../services/Users/userService";
+import {
+  getCurrentUser,
+  getUserLanguages,
+  userStreak,
+} from "../services/Users/userService";
 import { getUserProgress } from "../services/UserProgress/UserProgressService";
 
 export const RightBar = () => {
-  1;
+  const [lastPracticeDate, setLastPracticeDate] = useState(null);
+  const [practicedDates, setPracticedDates] = useState([]); // <-- thêm
+  const [lives, setLives] = useState(0);
   const goalXp = 50;
   const [xpToday, setXpToday] = useState(0);
   const navigate = useNavigate();
@@ -28,11 +36,35 @@ export const RightBar = () => {
 
   const current = useSelector((state) => state.language.currentLanguage);
 
-  const streak = 3;
   const lingots = 10;
   const [gemsShown, setGemsShown] = useState(false);
   const [streakShown, setStreakShown] = useState(false);
   const [now, setNow] = useState(dayjs());
+
+  const currentUser = useSelector((state) => state.user.currentUser);
+  // const streak = currentUser?.streak_count || 0;
+
+  const [streak, setStreak] = useState(0);
+
+  useEffect(() => {
+    userStreak()
+      .then((res) => {
+        if (res.code === 0) {
+          const { streakCount, lastPracticeDate } = res.data;
+          setStreak(streakCount);
+          setLastPracticeDate(lastPracticeDate);
+          // build mảng các ngày đã practice
+          const dates = [];
+          for (let i = 0; i < streakCount; i++) {
+            dates.push(
+              dayjs(lastPracticeDate).subtract(i, "day").format("YYYY-MM-DD")
+            );
+          }
+          setPracticedDates(dates);
+        }
+      })
+      .catch(console.error);
+  }, []);
 
   useEffect(() => {
     getUserLanguages()
@@ -53,6 +85,23 @@ export const RightBar = () => {
             .filter((p) => dayjs(p.completed_at).isSame(dayjs(), "day"))
             .reduce((acc, p) => acc + Number(p.xp), 0);
           setXpToday(sumToday);
+        }
+      })
+      .catch(console.error);
+  }, []);
+
+  useEffect(() => {
+    Promise.all([userStreak(), getCurrentUser()])
+      .then(([resStreak, resMe]) => {
+        if (resStreak.code === 0) {
+          const { streakCount, lastPracticeDate } = resStreak.data;
+          setStreak(streakCount);
+          setLastPracticeDate(lastPracticeDate);
+          // build practicedDates…
+        }
+        if (resMe.code === 0) {
+          // giả sử API trả về data.lives_remaining
+          setLives(resMe.data.lives_remaining || 0);
         }
       })
       .catch(console.error);
@@ -148,8 +197,19 @@ export const RightBar = () => {
               <p className="text-center text-sm font-normal text-gray-400">
                 {`But your streak will reset tomorrow if you don't practice tomorrow. Watch out!`}
               </p>
-              <Calendar now={now} setNow={setNow} />
+              <Calendar
+                now={now}
+                practicedDates={practicedDates}
+                setNow={setNow}
+              />
             </div>
+          </span>
+          {/* Lives (Hearts) */}
+          <span className="relative flex items-center gap-2 rounded-xl p-3 font-bold text-red-500 hover:bg-gray-100">
+            {lives > 0 ? <LessonTopBarHeart /> : <LessonTopBarEmptyHeart />}
+            <span className={lives > 0 ? "text-red-500" : "text-gray-300"}>
+              {lives}
+            </span>
           </span>
           {/* Gem */}
           <span
