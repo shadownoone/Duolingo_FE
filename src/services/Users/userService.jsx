@@ -35,3 +35,15 @@ export const userStreak = async (data) => {
     return res.data;
   });
 };
+
+export const updateHeart = async (data) => {
+  return await axiosClients.post("/users/updateHeart", data).then((res) => {
+    return res.data;
+  });
+};
+
+export const buyHeart = async (data) => {
+  return await axiosClients.post("/users/buyHeart", data).then((res) => {
+    return res.data;
+  });
+};

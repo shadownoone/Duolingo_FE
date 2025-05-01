@@ -24,7 +24,7 @@ import {
 } from "../services/Users/userService";
 import { getUserProgress } from "../services/UserProgress/UserProgressService";
 
-export const RightBar = () => {
+export const RightBar = ({ refreshCount }) => {
   const [lastPracticeDate, setLastPracticeDate] = useState(null);
   const [practicedDates, setPracticedDates] = useState([]); // <-- thêm
   const [lives, setLives] = useState(0);
@@ -35,8 +35,8 @@ export const RightBar = () => {
   const [languagesShown, setLanguagesShown] = useState(false);
 
   const current = useSelector((state) => state.language.currentLanguage);
+  const [lingots, setLingots] = useState(0);
 
-  const lingots = 10;
   const [gemsShown, setGemsShown] = useState(false);
   const [streakShown, setStreakShown] = useState(false);
   const [now, setNow] = useState(dayjs());
@@ -97,15 +97,14 @@ export const RightBar = () => {
           const { streakCount, lastPracticeDate } = resStreak.data;
           setStreak(streakCount);
           setLastPracticeDate(lastPracticeDate);
-          // build practicedDates…
         }
         if (resMe.code === 0) {
-          // giả sử API trả về data.lives_remaining
-          setLives(resMe.data.lives_remaining || 0);
+          setLives(resMe.data.hearts_count || 0);
+          setLingots(resMe.data.lingots || 0);
         }
       })
       .catch(console.error);
-  }, []);
+  }, [refreshCount]);
 
   return (
     <>
@@ -208,10 +207,10 @@ export const RightBar = () => {
           <span className="relative flex items-center gap-2 rounded-xl p-3 font-bold text-red-500 hover:bg-gray-100">
             {lives > 0 ? <LessonTopBarHeart /> : <LessonTopBarEmptyHeart />}
             <span className={lives > 0 ? "text-red-500" : "text-gray-300"}>
-              {lives}
+              {lives} {/* Hiển thị số lượng trái tim */}
             </span>
           </span>
-          {/* Gem */}
+          {/* Lingots */}
           <span
             className="relative flex items-center gap-2 rounded-xl p-3 font-bold text-red-500 hover:bg-gray-100"
             onMouseEnter={() => setGemsShown(true)}

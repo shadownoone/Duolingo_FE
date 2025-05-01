@@ -8,6 +8,7 @@ import {
   ActiveTrophySvg,
   CheckmarkSvg,
   FastForwardSvg,
+  GoldenBookSvg,
   GoldenDumbbellSvg,
   GoldenTreasureSvg,
   GoldenTrophySvg,
@@ -32,12 +33,13 @@ import { getLessonByCourse } from "../services/Courses/courseService";
 import { useDispatch } from "react-redux";
 import { setCurrentLanguage } from "../features/language/languageSlice";
 import { getUserProgress } from "../services/UserProgress/UserProgressService";
+import { getCurrentUser } from "../services/Users/userService";
 
 const UnitSection = ({ courseId, unitNumber, locked }) => {
   const navigate = useNavigate();
   const [unit, setUnit] = useState(null);
   const [selectedTile, setSelectedTile] = useState(null);
-
+  const [hearts, setHearts] = useState(0);
   const [completedLessons, setCompletedLessons] = useState([]);
   const [lessonsCompleted, setLessonsCompleted] = useState(0);
   const [loading, setLoading] = useState(true);
@@ -50,7 +52,7 @@ const UnitSection = ({ courseId, unitNumber, locked }) => {
           const lessons = Array.isArray(res.data) ? res.data : [res.data];
           const { Course } = lessons[0];
           const lessonTiles = lessons.map((lesson) => ({
-            type: "star",
+            type: lesson.type,
             description: lesson.lesson_title,
             lessonId: lesson.lesson_id,
           }));
@@ -87,12 +89,30 @@ const UnitSection = ({ courseId, unitNumber, locked }) => {
   }, []);
 
   useEffect(() => {
+    getCurrentUser()
+      .then((res) => {
+        if (res.code === 0) {
+          setHearts(res.data.hearts_count); // Cập nhật số trái tim
+        }
+      })
+      .catch(console.error);
+  }, []);
+
+  useEffect(() => {
     const unselectTile = () => setSelectedTile(null);
     window.addEventListener("scroll", unselectTile);
     return () => window.removeEventListener("scroll", unselectTile);
   }, []);
 
   const closeTooltip = useCallback(() => setSelectedTile(null), []);
+
+  const handleTileClick = (tile, status) => {
+    if (hearts === 0) {
+      alert("Bạn không đủ trái tim để tiếp tục học.");
+      // Dừng điều hướng nếu số trái tim = 0
+      return;
+    }
+  };
 
   const increaseLessonsCompleted = () => {
     // Increase the number of lessons completed
@@ -155,6 +175,7 @@ const UnitSection = ({ courseId, unitNumber, locked }) => {
                             tilesLength: unit.tiles.length,
                           }),
                         ].join(" ")}
+                        onClick={() => handleTileClick(tile, status)}
                       >
                         {tile.type === "fast-forward" && status === "LOCKED" ? (
                           <HoverLabel

@@ -13,30 +13,9 @@ import {
 import { Link, useLocation, useNavigate, useParams } from "react-router-dom";
 import { getLessonDetail } from "../services/Lessons/lessonService";
 import { completeLesson } from "../services/UserProgress/UserProgressService";
+import { chatAI } from "../services/AI/chatService";
 
-// Danh sách các câu hỏi
-const lessonProblems = [
-  {
-    type: "SELECT_1_OF_3",
-    question: `Which one of these is "the apple"?`,
-    answers: [
-      { icon: <AppleSvg />, name: "la manzana" },
-      { icon: <BoySvg />, name: "el niño" },
-      { icon: <WomanSvg />, name: "la mujer" },
-    ],
-    correctAnswer: 0,
-  },
-  {
-    type: "SELECT_1_OF_3",
-    question: `Which one of these is "the boy"?`,
-    answers: [
-      { icon: <AppleSvg />, name: "la manzana" },
-      { icon: <BoySvg />, name: "el niño" },
-      { icon: <WomanSvg />, name: "la mujer" },
-    ],
-    correctAnswer: 1,
-  },
-];
+import { getCurrentUser, updateHeart } from "../services/Users/userService";
 
 const Lesson = () => {
   const { lessonId } = useParams();
@@ -46,7 +25,7 @@ const Lesson = () => {
   const [lesson, setLesson] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
-
+  const [currentUser, setCurrentUser] = useState(null);
   const [currentQuestionIndex, setCurrentQuestionIndex] = useState(0);
   const [selectedAnswer, setSelectedAnswer] = useState(null);
   const [correctAnswerShown, setCorrectAnswerShown] = useState(false);
@@ -58,7 +37,7 @@ const Lesson = () => {
   const [questionResults, setQuestionResults] = useState([]);
   const [reviewLessonShown, setReviewLessonShown] = useState(false);
 
-  const [hearts, setHearts] = useState(3);
+  const [hearts, setHearts] = useState(0);
 
   const { search } = useLocation();
   const fastForwardUnit = new URLSearchParams(search).get("fast-forward");
@@ -75,6 +54,17 @@ const Lesson = () => {
       />
     );
   }
+
+  useEffect(() => {
+    getCurrentUser()
+      .then((res) => {
+        if (res.code === 0) {
+          setCurrentUser(res.data);
+          setHearts(res.data.hearts_count);
+        }
+      })
+      .catch(console.error);
+  }, []);
 
   useEffect(() => {
     if (!lessonId) return;
@@ -100,7 +90,7 @@ const Lesson = () => {
       ? lesson.exercises[currentQuestionIndex]
       : null;
 
-  const onCheckAnswer = () => {
+  const onCheckAnswer = async () => {
     setCorrectAnswerShown(true);
     const correctIndex = currentExercise.options.findIndex(
       (opt) => opt.is_correct
@@ -109,23 +99,27 @@ const Lesson = () => {
     setIsAnswerCorrect(isCorrect);
 
     if (!isCorrect) {
-      setHearts((h) => Math.max(h - 1, 0));
-    } else {
-      // nếu đúng thì cộng điểm như cũ
-      setCorrectAnswerCount((prev) => prev + 1);
-    }
+      // Giảm số lượng trái tim khi trả lời sai
+      const newHeartsCount = Math.max(hearts - 1, 0);
+      setHearts(newHeartsCount); // Cập nhật trái tim trên frontend
 
-    setQuestionResults((prevResults) => [
-      ...prevResults,
-      {
-        question: currentExercise.question_content,
-        yourResponse: currentExercise.options[selectedAnswer].option_text,
-        correctResponse: currentExercise.options[correctIndex].option_text,
-      },
-    ]);
+      // Gọi API để cập nhật trái tim trong cơ sở dữ liệu
+      if (currentUser) {
+        try {
+          await updateHeart({
+            userId: currentUser.user_id, // Dùng currentUser.user_id
+            heartsCount: newHeartsCount,
+          });
+        } catch (error) {
+          console.error("Failed to update hearts count", error);
+        }
+      }
 
-    if (isCorrect) {
-      setCorrectAnswerCount((prev) => prev + 1); // Tăng điểm nếu đúng
+      if (newHeartsCount === 0) {
+        alert("You have no more hearts! Returning to the main screen.");
+        navigate(`/learn/${lesson.Course.language_id}`); // Điều hướng trở lại màn hình học
+        return;
+      }
     }
   };
 
@@ -147,7 +141,7 @@ const Lesson = () => {
       <LessonComplete
         lessonId={lessonId}
         correctAnswerCount={correctAnswerCount}
-        totalQuestions={lessonProblems.length}
+        totalQuestions={lesson?.exercises?.length || 0}
         startTime={startTime.current}
         endTime={endTime.current}
         setReviewLessonShown={setReviewLessonShown}
@@ -200,7 +194,7 @@ const Lesson = () => {
                 }}
               />
             </div>
-            {[1, 2, 3].map((n) =>
+            {[1, 2, 3, 4, 5].map((n) =>
               n <= hearts ? (
                 <LessonTopBarHeart key={n} />
               ) : (
@@ -275,6 +269,109 @@ const Lesson = () => {
           onFinish={onFinish}
         />
       )}
+
+      <ChatBox exercise_id={currentExercise?.exercise_id} />
+    </div>
+  );
+};
+
+const ChatBox = ({ exercise_id }) => {
+  const [isOpen, setIsOpen] = useState(false);
+  const [messages, setMessages] = useState([]);
+  const [inputMessage, setInputMessage] = useState("");
+
+  // Toggle chatbox visibility
+  const toggleChat = () => {
+    setIsOpen(!isOpen);
+  };
+
+  const handleSendMessage = async () => {
+    if (!inputMessage.trim()) return;
+
+    // Add the user's message to the messages state
+    setMessages([...messages, { sender: "user", text: inputMessage }]);
+
+    // Clear the input field
+    setInputMessage("");
+
+    // Check if exercise_id is available
+    if (!exercise_id) {
+      console.error("exercise_id is missing");
+      return;
+    }
+
+    try {
+      // Call chatAI to get a response from the backend
+      const response = await chatAI(inputMessage, exercise_id);
+      setMessages((prevMessages) => [
+        ...prevMessages,
+        { sender: "bot", text: response.reply.text },
+      ]);
+    } catch (error) {
+      console.error("Error while chatting with AI:", error);
+      setMessages((prevMessages) => [
+        ...prevMessages,
+        { sender: "bot", text: "Sorry, there was an error. Please try again." },
+      ]);
+    }
+  };
+
+  return (
+    <div>
+      {/* Floating chat icon */}
+      <div
+        className={`fixed bottom-5 right-5 bg-blue-500 text-white p-3 rounded-full cursor-pointer shadow-lg ${
+          isOpen ? "hidden" : ""
+        }`}
+        onClick={toggleChat}
+      >
+        <span>Chat</span>
+      </div>
+
+      {/* Chatbox */}
+      {isOpen && (
+        <div className="fixed bottom-5 right-5 bg-white p-5 rounded-lg shadow-lg w-80 h-96">
+          <div className="flex justify-between items-center">
+            <h3 className="text-xl font-bold">Chat with us</h3>
+            <button onClick={toggleChat}>X</button>
+          </div>
+
+          {/* Messages */}
+          <div className="overflow-y-auto max-h-72 my-4">
+            {messages.map((msg, index) => (
+              <div
+                key={index}
+                className={msg.sender === "user" ? "text-right" : "text-left"}
+              >
+                <p
+                  className={`p-2 ${
+                    msg.sender === "user" ? "bg-blue-100" : "bg-gray-100"
+                  }`}
+                >
+                  {msg.text}
+                </p>
+              </div>
+            ))}
+          </div>
+
+          {/* Message input */}
+          <div className="flex items-center">
+            <input
+              type="text"
+              value={inputMessage}
+              onChange={(e) => setInputMessage(e.target.value)}
+              className="border-2 border-gray-300 rounded-lg p-2 flex-grow"
+              placeholder="Type a message..."
+            />
+            <button
+              className="ml-2 bg-blue-500 text-white px-4 py-2 rounded-lg"
+              onClick={handleSendMessage}
+            >
+              Send
+            </button>
+          </div>
+        </div>
+      )}
     </div>
   );
 };
@@ -322,14 +419,15 @@ const FeedbackMessage = ({ isAnswerCorrect, correctAnswer, onFinish }) => (
 const LessonComplete = ({
   lessonId,
   correctAnswerCount,
-  totalQuestions,
   startTime,
   endTime,
   setReviewLessonShown,
   reviewLessonShown,
   questionResults,
   languageId,
+  lesson,
 }) => {
+  const totalQuestions = lesson?.exercises?.length || 0;
   const totalXP = correctAnswerCount;
   const totalTime = Math.floor((endTime - startTime) / 1000);
   const minutes = Math.floor(totalTime / 60);
