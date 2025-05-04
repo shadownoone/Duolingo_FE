@@ -19,6 +19,7 @@ import { useSelector } from "react-redux";
 import { toDateString } from "../utils/dateString";
 import UpdateProfile from "../components/UpdateProfile";
 import LoginScreen from "./LoginScreen";
+import { getFriend } from "../services/Friends/friendService";
 
 const Profile = () => {
   const [showEditModal, setShowEditModal] = useState(false);
@@ -231,43 +232,92 @@ const ProfileStatsSection = () => {
   );
 };
 
-const ProfileFriendsSection = () => {
-  const [state, setState] = useState("FOLLOWING");
+function ProfileFriendsSection() {
+  const [mode, setMode] = useState("FOLLOWING"); // or "FOLLOWERS"
+  const [friends, setFriends] = useState([]);
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState(null);
+
+  useEffect(() => {
+    if (mode !== "FOLLOWING") {
+      // TODO: khi thêm API lấy followers thì gọi ở đây
+      setFriends([]);
+      return;
+    }
+    setLoading(true);
+    setError(null);
+
+    getFriend()
+      .then((res) => {
+        if (res.code === 0) {
+          setFriends(res.data);
+        } else {
+          throw new Error(res.message);
+        }
+      })
+      .catch((err) => {
+        console.error(err);
+        setError(err.message || "Failed to load friends");
+      })
+      .finally(() => setLoading(false));
+  }, [mode]);
 
   return (
     <section>
       <h2 className="mb-5 text-2xl font-bold">Friends</h2>
       <div className="rounded-2xl border-2 border-gray-200">
+        {/* Tabs */}
         <div className="flex">
-          <button
-            className={[
-              "flex w-1/2 items-center justify-center border-b-2 py-3 font-bold uppercase hover:border-blue-400 hover:text-blue-400",
-              state === "FOLLOWING"
-                ? "border-blue-400 text-blue-400"
-                : "border-gray-200 text-gray-400",
-            ].join(" ")}
-            onClick={() => setState("FOLLOWING")}
-          >
-            Following
-          </button>
-          <button
-            className={[
-              "flex w-1/2 items-center justify-center border-b-2 py-3 font-bold uppercase hover:border-blue-400 hover:text-blue-400",
-              state === "FOLLOWERS"
-                ? "border-blue-400 text-blue-400"
-                : "border-gray-200 text-gray-400",
-            ].join(" ")}
-            onClick={() => setState("FOLLOWERS")}
-          >
-            Followers
-          </button>
+          {["FOLLOWING", "FOLLOWERS"].map((tab) => (
+            <button
+              key={tab}
+              onClick={() => setMode(tab)}
+              className={[
+                "flex w-1/2 items-center justify-center border-b-2 py-3 font-bold uppercase transition",
+                mode === tab
+                  ? "border-blue-400 text-blue-400"
+                  : "border-gray-200 text-gray-400 hover:border-blue-400 hover:text-blue-400",
+              ].join(" ")}
+            >
+              {tab === "FOLLOWING" ? "Following" : "Followers"}
+            </button>
+          ))}
         </div>
-        <div className="flex items-center justify-center py-10 text-center text-gray-500">
-          {state === "FOLLOWING"
-            ? "Not following anyone yet"
-            : "No followers yet"}
+
+        {/* Content */}
+        <div className="p-5">
+          {loading && <div className="text-center text-gray-500">Loading…</div>}
+          {error && <div className="text-center text-red-500">{error}</div>}
+
+          {!loading && !error && friends.length === 0 && (
+            <div className="flex items-center justify-center py-10 text-gray-500">
+              {mode === "FOLLOWING"
+                ? "Not following anyone yet"
+                : "No followers yet"}
+            </div>
+          )}
+
+          {!loading && !error && friends.length > 0 && (
+            <ul className="space-y-4">
+              {friends.map((u) => (
+                <li key={u.user_id} className="flex items-center gap-4">
+                  <img
+                    src={u.avatar || "/placeholder-avatar.png"}
+                    alt={u.username}
+                    className="h-10 w-10 rounded-full object-cover"
+                  />
+                  <Link
+                    to={`/profile/${u.user_id}`}
+                    className="font-semibold text-gray-800 hover:underline"
+                  >
+                    {u.username}
+                  </Link>
+                </li>
+              ))}
+            </ul>
+          )}
         </div>
       </div>
     </section>
   );
-};
+}
