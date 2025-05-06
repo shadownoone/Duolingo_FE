@@ -6,9 +6,12 @@ import {
   LeaderboardBannerSvg,
   LeaderboardExplanationSvg,
   LockedLeaderboardSvg,
+  PlusSvg,
 } from "../components/Svgs";
 import { useSelector } from "react-redux";
 import { leaderBoard } from "../services/UserProgress/UserProgressService";
+import { autoFollowing, getFriend } from "../services/Friends/friendService";
+import { toast } from "react-toastify";
 
 const LeaderboardExplanationSection = () => (
   <article className="relative hidden h-fit w-96 shrink-0 gap-5 rounded-2xl border-2 border-gray-200 p-6 xl:flex">
@@ -39,6 +42,7 @@ export default function Leaderboards() {
   const [board, setBoard] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
+  const [following, setFollowing] = useState([]);
 
   useEffect(() => {
     const fetchBoard = async () => {
@@ -55,11 +59,42 @@ export default function Leaderboards() {
         setLoading(false);
       }
     };
+
+    const fetchFollowing = async () => {
+      try {
+        const res = await getFriend();
+        if (res.code === 0) {
+          setFollowing(res.data.map((friend) => friend.user_id));
+        } else {
+          setError(res.message);
+        }
+      } catch (err) {
+        setError(err.message);
+      }
+    };
+
     fetchBoard();
+    fetchFollowing();
   }, []);
 
   const handleClick = () => {
     navigate(`/learn/${currentLanguage.language_id}`);
+  };
+
+  const handleFollow = (userId) => {
+    autoFollowing(userId)
+      .then((res) => {
+        toast.success(`Successfully followed user`, {
+          position: "top-right",
+          autoClose: 2000,
+        });
+      })
+      .catch((err) => {
+        toast.error(`Failed to follow user`, {
+          position: "top-right",
+          autoClose: 2000,
+        });
+      });
   };
 
   return (
@@ -115,6 +150,8 @@ export default function Leaderboards() {
                       ? "🥉"
                       : null;
 
+                  const isFollowed = following.includes(user.userId);
+
                   return (
                     <li
                       key={user.userId}
@@ -148,6 +185,15 @@ export default function Leaderboards() {
                       <span className="font-bold text-gray-600">
                         {user.totalXp} XP
                       </span>
+
+                      {!isMe && !isFollowed && (
+                        <button
+                          className="ml-3 p-2 bg-blue-500 text-white rounded-full"
+                          onClick={() => handleFollow(user.userId)}
+                        >
+                          <PlusSvg />
+                        </button>
+                      )}
                     </li>
                   );
                 })}

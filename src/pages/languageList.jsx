@@ -35,6 +35,7 @@ function LanguageList() {
         const userRes = await getUserLanguages();
 
         const arr = userRes.data ?? userRes;
+
         dispatch(setUserLanguages(arr));
       } catch (err) {
         console.error(err);

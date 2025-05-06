@@ -1,10 +1,14 @@
-import { useState } from 'react';
-import { ChevronDownSvg } from './Svgs';
-import languages from '../utils/languages';
-import { Flag } from './Flag';
+import { useState } from "react";
+import { ChevronDownSvg } from "./Svgs";
+import languages from "../utils/languages";
+import { Flag } from "./Flag";
+import { useDispatch, useSelector } from "react-redux";
 
 export const LanguageDropDown = () => {
+  const dispatch = useDispatch();
   const [languagesShown, setLanguagesShown] = useState(false);
+
+  const languages = useSelector((state) => state.language.languages);
 
   return (
     <div
@@ -16,7 +20,7 @@ export const LanguageDropDown = () => {
       role="button"
       tabIndex={0}
       onKeyDown={(e) => {
-        if (e.key === 'Enter' || e.key === ' ') {
+        if (e.key === "Enter" || e.key === " ") {
           setLanguagesShown((isShown) => !isShown);
         }
       }}
@@ -33,8 +37,8 @@ export const LanguageDropDown = () => {
                 tabIndex={0}
                 className="flex items-center gap-3 whitespace-nowrap rounded-xl p-3 hover:bg-gray-300"
               >
-                <Flag language={language} width={24} />
-                {language.nativeName}
+                <Flag code={language.language_code} size="40px" />
+                <span>{language.language_name}</span>
               </a>
             </li>
           ))}
