@@ -1,7 +1,12 @@
 import React, { useState } from "react";
-import { getCurrentUser, updateUser } from "../services/Users/userService";
+import {
+  getCurrentUser,
+  updateUser,
+  uploadSingleImage,
+} from "../services/Users/userService";
 import { useDispatch } from "react-redux";
 import { addCurrentUser } from "../features/user/userSlice";
+import { toast } from "react-toastify";
 
 const UpdateProfile = ({ currentUser, onClose }) => {
   const dispatch = useDispatch();
@@ -14,6 +19,43 @@ const UpdateProfile = ({ currentUser, onClose }) => {
   });
   const [errors, setErrors] = useState({});
   const [avatarPreview, setAvatarPreview] = useState(currentUser?.avatar || "");
+  const [loading, setLoading] = useState(false);
+
+  const convertBase64 = (file) => {
+    return new Promise((resolve, reject) => {
+      const fileReader = new FileReader();
+      fileReader.readAsDataURL(file);
+      fileReader.onload = () => resolve(fileReader.result);
+      fileReader.onerror = (error) => reject(error);
+    });
+  };
+
+  const uploadImage = async (event) => {
+    const file = event.target.files[0];
+    const base64 = await convertBase64(file);
+
+    // Hiển thị tạm preview
+    setAvatarPreview(base64);
+
+    try {
+      setLoading(true);
+      const uploadedUrl = await uploadSingleImage(base64);
+      setAvatarPreview(uploadedUrl);
+
+      await updateUser({ avatar: uploadedUrl });
+
+      // Lấy user mới nhất và cập nhật Redux
+      const { data: newUser } = await getCurrentUser();
+      dispatch(addCurrentUser(newUser));
+
+      onClose();
+    } catch (err) {
+      console.error(err);
+      toast.error("Không thể cập nhật ảnh đại diện.");
+    } finally {
+      setLoading(false);
+    }
+  };
 
   const handleChange = (e) => {
     setFormData((prev) => ({
@@ -40,18 +82,22 @@ const UpdateProfile = ({ currentUser, onClose }) => {
     }
 
     try {
-      await updateUser(formData);
+      await updateUser({ ...currentUser, ...formData });
 
-      // Gọi API lấy user mới nhất
       const updatedUser = await getCurrentUser();
-      console.log("Updated user:", updatedUser);
-      // ✅ Dispatch reducer có sẵn để cập nhật state
+
       dispatch(addCurrentUser(updatedUser.data));
 
-      alert("Cập nhật thành công!");
+      toast.success("Update user successfully!", {
+        position: "top-right",
+        autoClose: 1000,
+        closeOnClick: true,
+        draggable: true,
+        progress: undefined,
+      });
       onClose();
     } catch (error) {
-      console.error("Update error:", error);
+      console.error("Error updating profile:", error);
     }
   };
 
@@ -76,13 +122,18 @@ const UpdateProfile = ({ currentUser, onClose }) => {
             </div>
           )}
         </div>
-        <button
-          type="button"
+        <label
+          htmlFor="avatarUpload"
           className="mt-2 cursor-pointer rounded-lg border border-gray-300 bg-white px-3 py-1 text-sm font-semibold text-gray-700 transition hover:bg-gray-100"
         >
           Change Avatar
-        </button>
-        <input type="file" accept="image/*" style={{ display: "none" }} />
+        </label>
+        <input
+          id="avatarUpload"
+          type="file"
+          onChange={uploadImage}
+          className="hidden"
+        />
       </div>
 
       <form onSubmit={handleSubmit} className="space-y-4">

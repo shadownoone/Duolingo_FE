@@ -1,7 +1,7 @@
 import { Link, useNavigate } from "react-router-dom";
 import React, { useState } from "react";
 
-import { GlobeIconSvg, PodcastIconSvg } from "./Svgs";
+import { GlobeIconSvg, LogOutSvg, PodcastIconSvg } from "./Svgs";
 import { useBottomBarItems } from "./BottomBar";
 import { handleLogout } from "../services/Log/loginService";
 import { useDispatch, useSelector } from "react-redux";
@@ -113,6 +113,7 @@ export const LeftBar = ({ selectedTab }) => {
                   className="flex items-center gap-4 px-5 py-2 text-left uppercase hover:bg-gray-100"
                   onClick={handleLogout}
                 >
+                  <LogOutSvg className="h-10 w-10" />
                   Logout
                 </button>
               </div>

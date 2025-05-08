@@ -47,3 +47,15 @@ export const buyHeart = async (data) => {
     return res.data;
   });
 };
+
+export const uploadSingleImage = async (base64) => {
+  try {
+    const response = await axiosClients.post(`/users/uploadImage`, {
+      image: base64,
+    });
+    return response.data;
+  } catch (error) {
+    console.error("Error uploading image:", error);
+    throw error; // Ném lỗi ra để xử lý bên ngoài nếu cần
+  }
+};

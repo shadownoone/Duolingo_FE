@@ -11,13 +11,11 @@ export const handleLogin = async (email, password) => {
     if (response.data.user) {
       alert("Login successful!");
 
-      window.location.href = "/";
-
-      //   if (response.data.user.data.role === 0) {
-      //     window.location.href = PATH.home
-      //   } else {
-      //     window.location.href = 'http://localhost:5174/'
-      //   }
+      if (response.data.user.role === 0) {
+        window.location.href = "/";
+      } else {
+        window.location.href = "http://localhost:5174/";
+      }
     } else {
       alert(response.data.user?.message || "Login failed!");
     }
