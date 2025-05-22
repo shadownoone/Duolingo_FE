@@ -28,6 +28,10 @@ export const LeftBar = ({ selectedTab }) => {
   const currentLanguage = useSelector(
     (state) => state.language.currentLanguage
   );
+  const currentUser = useSelector((state) => state.user.currentUser);
+
+  console.log("currentUser", currentUser);
+
   const navigate = useNavigate();
 
   const [moreMenuShown, setMoreMenuShown] = useState(false);
@@ -47,12 +51,21 @@ export const LeftBar = ({ selectedTab }) => {
   return (
     <>
       <nav className="fixed bottom-0 left-0 top-0 hidden flex-col gap-5 border-r-2 border-[#e5e5e5] bg-white p-3 md:flex lg:w-64 lg:p-5">
-        <button
-          onClick={handleLogoClick}
-          className="mb-5 ml-5 mt-5 hidden text-3xl font-bold text-[#58cc02] lg:block"
-        >
-          Duolingo
-        </button>
+        {currentUser.is_vip === 1 ? (
+          <img
+            src="/sp1.png"
+            alt="VIP Logo"
+            onClick={handleLogoClick}
+            className="mb-5 ml-5 mt-5 hidden lg:block h-20 cursor-pointer rounded-full"
+          />
+        ) : (
+          <button
+            onClick={handleLogoClick}
+            className="mb-5 ml-5 mt-5 hidden text-3xl font-bold text-[#58cc02] lg:block"
+          >
+            Duolingo
+          </button>
+        )}
         <ul className="flex flex-col items-stretch gap-3">
           {bottomBarItems.map((item) => (
             <li key={item.href} className="flex flex-1">

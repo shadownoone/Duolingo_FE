@@ -39,6 +39,7 @@ export default function Leaderboards() {
   const navigate = useNavigate();
   const [activeIndex, setActiveIndex] = useState(0);
   const currentUser = useSelector((state) => state.user.currentUser);
+  const isVip = currentUser?.is_vip === 1;
   const currentLanguage = useSelector(
     (state) => state.language.currentLanguage
   );
@@ -93,6 +94,7 @@ export default function Leaderboards() {
         setError(err.message);
       }
     };
+
     fetchBadges();
 
     fetchBoard();
@@ -289,6 +291,24 @@ export default function Leaderboards() {
                             <span className="text-sm text-blue-600">(you)</span>
                           )}
                         </span>
+
+                        {isVip && (
+                          <span
+                            style={{ position: "absolute", left: "880px" }}
+                            className="font-bungee          
+text-xl sm:text-2xl  
+    font-bold
+    bg-gradient-to-r 
+      from-green-400 
+      via-cyan-400 
+      to-purple-500
+    bg-clip-text
+    text-transparent
+  "
+                          >
+                            SUPER
+                          </span>
+                        )}
                         <span className="font-bold text-gray-600">
                           {user.totalXp} XP
                         </span>

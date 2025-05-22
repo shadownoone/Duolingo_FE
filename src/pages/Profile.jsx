@@ -61,6 +61,8 @@ const Profile = () => {
   };
 
   const currentUser = useSelector((state) => state.user.currentUser);
+
+  const isVip = currentUser?.is_vip === 1;
   if (!currentUser) {
     return <LoginScreen />;
   }
@@ -76,8 +78,9 @@ const Profile = () => {
             followingCount={counts.following}
             followersCount={counts.followers}
             openEditModal={openEditModal}
+            isVip={isVip}
           />
-          <ProfileStatsSection currentUser={currentUser} />
+          <ProfileStatsSection currentUser={currentUser} isVip={isVip} />
           <ProfileFriendsSection />
         </div>
       </div>
@@ -239,64 +242,78 @@ function ProfileFriendsSection() {
   );
 }
 
-const ProfileStatsSection = ({ currentUser }) => {
+const ProfileStatsSection = ({ currentUser, isVip }) => {
   const streak = currentUser.streak_count;
   const totalXp = 125;
   const league = "Bronze";
   const top3Finishes = 0;
 
+  // chung
+  const sectionTitleClass = [
+    "mb-5 text-2xl font-bold",
+    isVip ? "text-blue-600" : "text-gray-700",
+  ].join(" ");
+
+  const cardBase =
+    "flex gap-2 rounded-2xl p-2 md:gap-3 md:px-6 md:py-4 border-2";
+  const cardVip = "border-blue-300 bg-blue-50"; // <-- xanh nhạt
+  const cardNormal = "border-gray-200 bg-white";
+
+  const valueClass = isVip
+    ? "text-blue-600 text-xl font-bold" // giá trị tông xanh
+    : "text-gray-900 text-xl font-bold";
+  const labelClass = isVip
+    ? "text-blue-500 text-sm md:text-base" // label tông xanh nhạt
+    : "text-gray-400 text-sm md:text-base";
+
+  const iconClass = (filled) =>
+    isVip
+      ? "w-6 h-6 text-blue-600"
+      : filled
+      ? "w-6 h-6 text-red-500"
+      : "w-6 h-6 text-gray-400";
+
   return (
     <section>
-      <h2 className="mb-5 text-2xl font-bold">Statistics</h2>
+      <h2 className={sectionTitleClass}>Statistics</h2>
       <div className="grid grid-cols-2 gap-3">
-        <div className="flex gap-2 rounded-2xl border-2 border-gray-200 p-2 md:gap-3 md:px-6 md:py-4">
-          {streak === 0 ? <EmptyFireSvg /> : <FireSvg />}
+        {/* Day streak */}
+        <div className={`${cardBase} ${isVip ? cardVip : cardNormal}`}>
+          {streak === 0 ? (
+            <EmptyFireSvg className={iconClass(false)} />
+          ) : (
+            <FireSvg className={iconClass(true)} />
+          )}
           <div className="flex flex-col">
-            <span
-              className={[
-                "text-xl font-bold",
-                streak === 0 ? "text-gray-400" : "",
-              ].join(" ")}
-            >
-              {streak}
-            </span>
-            <span className="text-sm text-gray-400 md:text-base">
-              Day streak
-            </span>
-          </div>
-        </div>
-        <div className="flex gap-2 rounded-2xl border-2 border-gray-200 p-2 md:gap-3 md:px-6 md:py-4">
-          <LightningProgressSvg size={35} />
-          <div className="flex flex-col">
-            <span className="text-xl font-bold">{totalXp}</span>
-            <span className="text-sm text-gray-400 md:text-base">Total XP</span>
+            <span className={valueClass}>{streak}</span>
+            <span className={labelClass}>Day streak</span>
           </div>
         </div>
 
-        <div className="flex gap-2 rounded-2xl border-2 border-gray-200 p-2 md:gap-3 md:px-6 md:py-4">
-          <BronzeLeagueSvg width={25} height={35} />
+        {/* Total XP */}
+        <div className={`${cardBase} ${isVip ? cardVip : cardNormal}`}>
+          <LightningProgressSvg className={iconClass(true)} />
           <div className="flex flex-col">
-            <span className="text-xl font-bold">{league}</span>
-            <span className="text-sm text-gray-400 md:text-base">
-              Current league
-            </span>
+            <span className={valueClass}>{totalXp}</span>
+            <span className={labelClass}>Total XP</span>
           </div>
         </div>
 
-        <div className="flex gap-2 rounded-2xl border-2 border-gray-200 p-2 md:gap-3 md:px-6 md:py-4">
-          {top3Finishes === 0 ? <EmptyMedalSvg /> : <EmptyMedalSvg />}
+        {/* Current league */}
+        <div className={`${cardBase} ${isVip ? cardVip : cardNormal}`}>
+          <BronzeLeagueSvg className={iconClass(false)} />
           <div className="flex flex-col">
-            <span
-              className={[
-                "text-xl font-bold",
-                top3Finishes === 0 ? "text-gray-400" : "",
-              ].join(" ")}
-            >
-              {top3Finishes}
-            </span>
-            <span className="text-sm text-gray-400 md:text-base">
-              Top 3 finishes
-            </span>
+            <span className={valueClass}>{league}</span>
+            <span className={labelClass}>Current league</span>
+          </div>
+        </div>
+
+        {/* Top 3 finishes */}
+        <div className={`${cardBase} ${isVip ? cardVip : cardNormal}`}>
+          <EmptyMedalSvg className={iconClass(false)} />
+          <div className="flex flex-col">
+            <span className={valueClass}>{top3Finishes}</span>
+            <span className={labelClass}>Top 3 finishes</span>
           </div>
         </div>
       </div>
@@ -324,26 +341,54 @@ const ProfileTopSection = ({
   openEditModal,
   followingCount,
   followersCount,
+  isVip,
 }) => {
   const current = useSelector((state) => state.language.currentLanguage);
 
   return (
     <section className="flex flex-row-reverse border-b-2 border-gray-200 pb-8 md:flex-row md:gap-8">
-      <div className="flex h-20 w-20 items-center justify-center rounded-full border-2 border-dashed border-gray-400 text-3xl font-bold text-gray-400 md:h-44 md:w-44 md:text-7xl">
-        {currentUser?.avatar ? (
+      <div
+        className={[
+          // chung
+          "flex items-center justify-center rounded-full p-1",
+          "h-20 w-20 md:h-44 md:w-44",
+
+          // nếu VIP thì ring xanh + offset trắng, ngược lại dashed bình thường
+          isVip
+            ? "ring-4 ring-cyan-400 ring-offset-2 ring-offset-white shadow-lg"
+            : "border-2 border-dashed border-gray-400",
+        ].join(" ")}
+      >
+        {currentUser.avatar ? (
           <img
             src={currentUser.avatar}
             alt="Avatar"
             className="h-full w-full object-cover rounded-full"
           />
         ) : (
-          (currentUser?.username?.charAt(0) || "U").toUpperCase()
+          <span className="text-3xl font-bold text-gray-400">
+            {(currentUser.username || "U")[0].toUpperCase()}
+          </span>
         )}
       </div>
       <div className="flex grow flex-col justify-between gap-3">
         <div className="flex flex-col gap-2">
           <div>
-            <h1 className="text-2xl font-bold">{currentUser.name}</h1>
+            <h1 className="text-2xl font-bold">
+              {currentUser.name}
+              {isVip && (
+                <span
+                  className="
+                  ml-3 inline-block whitespace-nowrap
+                  bg-gradient-to-r from-green-400 via-cyan-400 to-purple-500
+                  bg-clip-text text-transparent
+                  text-sm font-semibold
+                "
+                >
+                  SUPER VIP
+                </span>
+              )}
+            </h1>
             <div className="text-sm text-gray-400">{currentUser.username}</div>
           </div>
           <div className="flex items-center gap-3">
@@ -352,18 +397,20 @@ const ProfileTopSection = ({
             </div>
           </div>
           <div className="flex items-center gap-3">
-            <ProfileTimeJoinedSvg />
-            <span className="text-gray-500">{`Joined ${toDateString(
-              currentUser.created_at
-            )}`}</span>
+            <ProfileTimeJoinedSvg className={isVip ? "text-white" : ""} />
+            <span>{`Joined ${toDateString(currentUser.created_at)}`}</span>
           </div>
           <div className="flex items-center gap-3">
-            <ProfileFriendsSvg />
-            <span className="text-gray-500">{`${followingCount} Following / ${followersCount} Followers`}</span>
+            <ProfileFriendsSvg className={isVip ? "text-white" : ""} />
+            <span>{`${followingCount} Following / ${followersCount} Followers`}</span>
           </div>
         </div>
 
-        <Flag code={current.language_code} width={40} />
+        <Flag
+          code={current.language_code}
+          width={40}
+          className={isVip ? "brightness-150" : ""}
+        />
       </div>
       <button
         onClick={openEditModal}

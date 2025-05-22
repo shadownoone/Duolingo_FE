@@ -2,8 +2,9 @@ import { useState, useEffect } from "react";
 import { toast } from "react-toastify";
 import { LeftBar } from "../components/LeftBar";
 import { RightBar } from "../components/RightBar";
-import { GemSvg, LessonTopBarHeart } from "../components/Svgs";
+import { DuolingoVip, GemSvg, LessonTopBarHeart } from "../components/Svgs";
 import { buyHeart, getCurrentUser } from "../services/Users/userService";
+import { createPaymentLink } from "../services/Payments/paymentService";
 
 function Shop() {
   const heartPrice = 10; // giá cứng cho 1 trái tim
@@ -11,6 +12,7 @@ function Shop() {
   const [loading, setLoading] = useState(false);
   const [refreshCount, setRefreshCount] = useState(0);
   const [heartsCount, setHeartsCount] = useState(0);
+  const [isVip, setIsVip] = useState(false);
 
   // Fetch số hearts hiện tại mỗi khi mount hoặc refreshCount thay đổi
   useEffect(() => {
@@ -18,10 +20,19 @@ function Shop() {
       .then((res) => {
         if (res.code === 0) {
           setHeartsCount(res.data.hearts_count || 0);
+          setIsVip(res.data.is_vip === 1);
         }
       })
       .catch(console.error);
   }, [refreshCount]);
+
+  const handleBuyVip = () => {
+    if (isVip) {
+      return toast.info("Bạn đã là VIP");
+    }
+    // Tạo link thanh toán và redirect
+    createPaymentLink();
+  };
 
   const isMaxHearts = heartsCount >= maxHearts;
 
@@ -76,6 +87,24 @@ function Shop() {
                       <GemSvg /> {heartPrice}
                     </>
                   )}
+                </button>
+              </section>
+            </div>
+
+            {/* Duolingo VIP */}
+            <div className="flex items-start gap-4 border-t-2 border-gray-300 py-5">
+              <DuolingoVip className="w-24 h-24 text-red-500" />
+              <section className="flex flex-col gap-3">
+                <h3 className="text-lg font-bold">SUPER DUOLINGOOO!!!</h3>
+                <p className="text-sm text-gray-500">
+                  Never run out of heart when learning with Super!
+                </p>
+                <button
+                  onClick={handleBuyVip}
+                  disabled={isVip}
+                  className="flex w-fit items-center gap-1 rounded-2xl border-2 border-gray-300 bg-white px-4 py-2 text-sm font-bold uppercase text-gray-700 cursor-pointer transition duration-150 ease-in-out hover:bg-gray-100 hover:border-gray-400 active:scale-95 active:bg-gray-200 disabled:opacity-50"
+                >
+                  {isVip ? "You are Super Duolingo" : "Buy SuperLingo"}
                 </button>
               </section>
             </div>

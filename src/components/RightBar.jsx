@@ -1,5 +1,6 @@
 import { useEffect, useState } from "react";
 import {
+  DuolingoVip,
   EmptyFireSvg,
   EmptyGemSvg,
   FireSvg,
@@ -42,6 +43,7 @@ export const RightBar = ({ refreshCount }) => {
   const [now, setNow] = useState(dayjs());
 
   const currentUser = useSelector((state) => state.user.currentUser);
+  const isVip = currentUser?.is_vip === 1;
   // const streak = currentUser?.streak_count || 0;
 
   const [streak, setStreak] = useState(0);
@@ -205,10 +207,18 @@ export const RightBar = ({ refreshCount }) => {
           </span>
           {/* Lives (Hearts) */}
           <span className="relative flex items-center gap-2 rounded-xl p-3 font-bold text-red-500 hover:bg-gray-100">
-            {lives > 0 ? <LessonTopBarHeart /> : <LessonTopBarEmptyHeart />}
-            <span className={lives > 0 ? "text-red-500" : "text-gray-300"}>
-              {lives} {/* Hiển thị số lượng trái tim */}
-            </span>
+            {isVip ? (
+              <DuolingoVip />
+            ) : lives > 0 ? (
+              <LessonTopBarHeart className="w-6 h-6" />
+            ) : (
+              <LessonTopBarEmptyHeart className="w-6 h-6" />
+            )}
+            {!isVip && (
+              <span className={lives > 0 ? "text-red-500" : "text-gray-300"}>
+                {lives}
+              </span>
+            )}
           </span>
           {/* Lingots */}
           <span
