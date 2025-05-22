@@ -35,7 +35,7 @@ import { setCurrentLanguage } from "../features/language/languageSlice";
 import { getUserProgress } from "../services/UserProgress/UserProgressService";
 import { getCurrentUser } from "../services/Users/userService";
 
-const UnitSection = ({ courseId, unitNumber, locked }) => {
+const UnitSection = ({ courseId, unitNumber, locked, courseName }) => {
   const navigate = useNavigate();
   const [unit, setUnit] = useState(null);
   const [selectedTile, setSelectedTile] = useState(null);
@@ -50,7 +50,8 @@ const UnitSection = ({ courseId, unitNumber, locked }) => {
       .then((res) => {
         if (res.code === 0) {
           const lessons = Array.isArray(res.data) ? res.data : [res.data];
-          const { Course } = lessons[0];
+          console.log("Lessons:", lessons);
+
           const lessonTiles = lessons.map((lesson) => ({
             type: lesson.type,
             description: lesson.lesson_title,
@@ -58,7 +59,7 @@ const UnitSection = ({ courseId, unitNumber, locked }) => {
           }));
 
           setUnit({
-            description: Course.course_name,
+            description: courseName,
             backgroundColor: "bg-[#58cc02]",
             textColor: "text-[#58cc02]",
             borderColor: "border-[#46a302]",
@@ -366,6 +367,9 @@ const Learn = () => {
           <section className="grid grid-cols-1 gap-4">
             {language.courses && language.courses.length > 0 ? (
               language.courses.map((course, idx) => {
+                const lessonIds = courseLessonsMap[course.course_id] || [];
+
+                if (lessonIds.length === 0) return null;
                 const unitNumber = idx + 1;
                 const prevCourseId = language.courses[idx - 1]?.course_id;
                 const prevLessons = courseLessonsMap[prevCourseId] || [];
@@ -391,6 +395,7 @@ const Learn = () => {
                     <UnitSection
                       unitNumber={unitNumber}
                       courseId={course.course_id}
+                      courseName={course.course_name}
                       locked={!isUnlocked}
                     />
                   </div>

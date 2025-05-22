@@ -14,6 +14,15 @@ import { chatAI } from "../services/AI/chatService";
 
 import { getCurrentUser, updateHeart } from "../services/Users/userService";
 
+const shuffleArray = (arr) => {
+  const a = [...arr];
+  for (let i = a.length - 1; i > 0; i--) {
+    const j = Math.floor(Math.random() * (i + 1));
+    [a[i], a[j]] = [a[j], a[i]];
+  }
+  return a;
+};
+
 const Lesson = () => {
   const { lessonId } = useParams();
   const navigate = useNavigate();
@@ -44,6 +53,7 @@ const Lesson = () => {
   const [wordBank, setWordBank] = useState([]);
 
   const currentExercise = lesson?.exercises?.[currentQuestionIndex] ?? null;
+
   const typeName = currentExercise?.exerciseType.exercise_type_name;
 
   const audioRef = useRef(null);
@@ -96,7 +106,8 @@ const Lesson = () => {
         .filter((o) => o.is_correct)
         .map((o) => o.option_text);
       setFilledWords(Array(correctWords.length).fill(""));
-      setWordBank(currentExercise.options.map((o) => o.option_text));
+      const allWords = currentExercise.options.map((o) => o.option_text);
+      setWordBank(shuffleArray(allWords));
     }
   }, [currentExercise, typeName]);
 
@@ -251,7 +262,6 @@ const Lesson = () => {
   return (
     <div className="flex min-h-screen flex-col gap-5 px-4 py-5 sm:px-0 sm:py-0">
       <div className="flex grow flex-col items-center gap-5">
-        {/* Thanh tiến trình */}
         <div className="w-full max-w-5xl sm:mt-8 sm:px-5">
           <header className="flex items-center gap-4">
             <button
@@ -302,9 +312,12 @@ const Lesson = () => {
           </h1>
 
           {typeName === "listening" ? (
-            // --- Listening UI ---
             <>
-              <audio ref={audioRef} src="/audio/b1.mp3" preload="auto" />
+              <audio
+                ref={audioRef}
+                src={currentExercise.audio_url}
+                preload="auto"
+              />
               <div className="flex gap-4">
                 <button
                   onClick={() => playAudio(1)}
@@ -320,7 +333,6 @@ const Lesson = () => {
                 </button>
               </div>
 
-              {/* Reuse blanks + word-bank của fill-in-the-blank */}
               <div className="flex gap-2 flex-wrap mt-6">
                 {filledWords.map((w, i) => (
                   <div
@@ -348,7 +360,6 @@ const Lesson = () => {
               </div>
             </>
           ) : typeName === "multiple_choice" ? (
-            // --- Multiple choice UI ---
             <div className="grid grid-cols-2 gap-4">
               {currentExercise.options.map((opt, i) => (
                 <div
