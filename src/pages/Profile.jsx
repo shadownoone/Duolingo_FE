@@ -6,15 +6,18 @@ import { Flag } from "../components/Flag";
 import { useEffect, useState } from "react";
 import {
   BronzeLeagueSvg,
+  BronzeSvg,
   CloseSvg,
   EditPencilSvg,
   EmptyFireSvg,
   EmptyMedalSvg,
   FireSvg,
+  GoldSvg,
   LightningProgressSvg,
   ProfileFriendsSvg,
   ProfileTimeJoinedSvg,
   SettingsGearSvg,
+  SiverSvg,
 } from "../components/Svgs";
 import { useSelector } from "react-redux";
 import { toDateString } from "../utils/dateString";
@@ -26,6 +29,7 @@ import {
   unFollowing,
 } from "../services/Friends/friendService";
 import { toast } from "react-toastify";
+import { getUserBadges } from "../services/UserBadges/userBadgeService";
 
 const Profile = () => {
   const [showEditModal, setShowEditModal] = useState(false);
@@ -82,6 +86,7 @@ const Profile = () => {
           />
           <ProfileStatsSection currentUser={currentUser} isVip={isVip} />
           <ProfileFriendsSection />
+          <UserBadges />
         </div>
       </div>
       <div className="pt-[90px]"></div>
@@ -97,6 +102,74 @@ const Profile = () => {
 };
 
 export default Profile;
+
+function UserBadges() {
+  const [badges, setBadges] = useState([]);
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState(null);
+
+  const iconMap = {
+    Bronze: BronzeSvg,
+    Silver: SiverSvg,
+    Gold: GoldSvg,
+  };
+
+  useEffect(() => {
+    setLoading(true);
+    getUserBadges()
+      .then((res) => {
+        if (res.code === 0) {
+          setBadges(res.data);
+        } else {
+          throw new Error(res.message);
+        }
+      })
+      .catch((err) => {
+        console.error(err);
+        setError(err.message || "Failed to load badges");
+      })
+      .finally(() => setLoading(false));
+  }, []);
+
+  return (
+    <section>
+      <h2 className="mb-5 text-2xl font-bold">Badges</h2>
+
+      {loading && <p className="text-gray-500">Loading badges…</p>}
+      {error && <p className="text-red-500">{error}</p>}
+
+      {!loading && !error && badges.length === 0 && (
+        <p className="text-gray-500">You haven’t earned any badges yet.</p>
+      )}
+
+      {!loading && !error && badges.length > 0 && (
+        <ul className="flex flex-wrap gap-4">
+          {badges.map((badge) => {
+            // chọn SVG nếu có, ngược lại dùng icon_url
+            const SvgIcon = iconMap[badge.badge_name];
+            return (
+              <li
+                key={badge.badge_id}
+                className="flex flex-col items-center gap-1"
+              >
+                {SvgIcon ? (
+                  <SvgIcon className="h-12 w-12" />
+                ) : (
+                  <img
+                    src={badge.icon_url}
+                    alt={badge.badge_name}
+                    className="h-12 w-12"
+                  />
+                )}
+                <span className="text-sm font-medium">{badge.badge_name}</span>
+              </li>
+            );
+          })}
+        </ul>
+      )}
+    </section>
+  );
+}
 
 function ProfileFriendsSection() {
   const [mode, setMode] = useState("FOLLOWING");

@@ -50,8 +50,6 @@ const UnitSection = ({ courseId, unitNumber, locked, courseName }) => {
       .then((res) => {
         if (res.code === 0) {
           const lessons = Array.isArray(res.data) ? res.data : [res.data];
-          console.log("Lessons:", lessons);
-
           const lessonTiles = lessons.map((lesson) => ({
             type: lesson.type,
             description: lesson.lesson_title,

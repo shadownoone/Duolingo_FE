@@ -30,8 +30,6 @@ export const LeftBar = ({ selectedTab }) => {
   );
   const currentUser = useSelector((state) => state.user.currentUser);
 
-  console.log("currentUser", currentUser);
-
   const navigate = useNavigate();
 
   const [moreMenuShown, setMoreMenuShown] = useState(false);

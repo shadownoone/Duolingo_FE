@@ -7,3 +7,9 @@ export const assignBadge = async (badgeId) => {
       return res.data;
     });
 };
+
+export const getUserBadges = async () => {
+  return await axiosClients.get(`/userBadges/userBadge`).then((res) => {
+    return res.data;
+  });
+};
