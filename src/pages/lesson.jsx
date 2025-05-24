@@ -11,6 +11,7 @@ import { Link, useLocation, useNavigate, useParams } from "react-router-dom";
 import { getLessonDetail } from "../services/Lessons/lessonService";
 import { completeLesson } from "../services/UserProgress/UserProgressService";
 import { chatAI } from "../services/AI/chatService";
+import { toast } from "react-toastify";
 
 import { getCurrentUser, updateHeart } from "../services/Users/userService";
 
@@ -51,6 +52,11 @@ const Lesson = () => {
 
   const [filledWords, setFilledWords] = useState([]);
   const [wordBank, setWordBank] = useState([]);
+  const [translationInput, setTranslationInput] = useState("");
+  const [leftItems, setLeftItems] = useState([]); // danh sách từ bên trái
+  const [rightItems, setRightItems] = useState([]); // danh sách từ bên phải (đã xáo trộn)
+  const [selectedLeft, setSelectedLeft] = useState(null); // từ trái đang chọn
+  const [matchedPairs, setMatchedPairs] = useState([]); // cặp người dùng vừa ghép
 
   const currentExercise = lesson?.exercises?.[currentQuestionIndex] ?? null;
 
@@ -111,6 +117,20 @@ const Lesson = () => {
     }
   }, [currentExercise, typeName]);
 
+  useEffect(() => {
+    if (currentExercise && typeName === "matching") {
+      const pairs = currentExercise.options.map((o) => {
+        const [l, r] = o.option_text.split("|").map((s) => s.trim());
+        return { left: l, right: r };
+      });
+
+      setLeftItems(shuffleArray(pairs.map((p) => p.left)));
+      setRightItems(shuffleArray(pairs.map((p) => p.right)));
+      setMatchedPairs([]);
+      setSelectedLeft(null);
+    }
+  }, [currentExercise, typeName]);
+
   const handleWordSelect = (word) => {
     const nextIdx = filledWords.findIndex((w) => w === "");
     if (nextIdx === -1) return;
@@ -134,37 +154,49 @@ const Lesson = () => {
   const handleResponse = async (responseIndex) => {
     setCorrectAnswerShown(true);
 
+    // declare once here, before any use
+    let yourResponse = "";
+
     // 1.2 tìm đáp án đúng
     const currentExercise = lesson.exercises[currentQuestionIndex];
-    const correctIndex = currentExercise.options.findIndex(
-      (opt) => opt.is_correct
-    );
-
     const correctSequence = currentExercise.options
       .filter((o) => o.is_correct)
       .map((o) => o.option_text)
       .join(" ");
+
+    // 1.3 kiểm tra đúng/sai
     let isCorrect = false;
     if (typeName === "multiple_choice") {
       const correctIndex = currentExercise.options.findIndex(
         (o) => o.is_correct
       );
       isCorrect = responseIndex !== null && responseIndex === correctIndex;
-    } else {
-      // so sánh chuỗi người dùng với chuỗi đúng
-      isCorrect = filledWords.join(" ").trim() === correctSequence;
-    }
-    setIsAnswerCorrect(isCorrect);
-
-    // 1.4 cập nhật questionResults
-    const questionText = currentExercise.question_content;
-    const yourResponse =
-      typeName === "multiple_choice"
-        ? responseIndex === null
+      yourResponse =
+        responseIndex === null
           ? "Skipped"
-          : currentExercise.options[responseIndex].option_text
-        : filledWords.join(" ");
-    // const correctResponse = correctOption.option_text;
+          : currentExercise.options[responseIndex].option_text;
+    } else if (typeName === "fill_in_the_blank" || typeName === "listening") {
+      isCorrect = filledWords.join(" ").trim() === correctSequence;
+      yourResponse = filledWords.join(" ");
+    } else if (typeName === "translation") {
+      const correctOption = currentExercise.options.find((o) => o.is_correct);
+      const correctText = correctOption
+        ? correctOption.option_text.trim().toLowerCase()
+        : "";
+      isCorrect = translationInput.trim().toLowerCase() === correctText;
+      yourResponse = translationInput.trim();
+    } else if (typeName === "matching") {
+      // matching logic
+      const correctPairs = currentExercise.options.map((o) =>
+        o.option_text.split("|").map((s) => s.trim())
+      );
+      isCorrect = matchedPairs.every((p) =>
+        correctPairs.some(([l, r]) => l === p.left && r === p.right)
+      );
+      yourResponse = matchedPairs.map((p) => `${p.left}|${p.right}`).join(",");
+    }
+
+    setIsAnswerCorrect(isCorrect);
 
     if (isCorrect) {
       setCorrectAnswerCount((c) => c + 1);
@@ -187,6 +219,8 @@ const Lesson = () => {
         return;
       }
     }
+
+    // ... (các bước tiếp theo, ví dụ: thêm vào questionResults, next câu hỏi, v.v.)
   };
 
   const onFinish = () => {
@@ -311,7 +345,17 @@ const Lesson = () => {
             {currentExercise.question_content}
           </h1>
 
-          {typeName === "listening" ? (
+          {typeName === "translation" ? (
+            // --- Translation (viết tự do) ---
+            <textarea
+              className="w-full max-w-2xl rounded-lg border border-gray-300 p-4 text-lg placeholder-gray-400 focus:border-blue-400 focus:ring focus:ring-blue-200"
+              placeholder="Nhập bằng Tiếng Anh"
+              rows={4}
+              value={translationInput}
+              onChange={(e) => setTranslationInput(e.target.value)}
+            />
+          ) : typeName === "listening" ? (
+            // --- Listening ---
             <>
               <audio
                 ref={audioRef}
@@ -332,7 +376,6 @@ const Lesson = () => {
                   🐢
                 </button>
               </div>
-
               <div className="flex gap-2 flex-wrap mt-6">
                 {filledWords.map((w, i) => (
                   <div
@@ -360,6 +403,7 @@ const Lesson = () => {
               </div>
             </>
           ) : typeName === "multiple_choice" ? (
+            // --- Multiple Choice ---
             <div className="grid grid-cols-2 gap-4">
               {currentExercise.options.map((opt, i) => (
                 <div
@@ -375,8 +419,88 @@ const Lesson = () => {
                 </div>
               ))}
             </div>
+          ) : typeName === "matching" ? (
+            // === Matching UI ===
+            <div className="grid grid-cols-2 gap-4 w-full max-w-xl">
+              {/* Cột trái */}
+              <div className="space-y-2">
+                {leftItems.map((item) => (
+                  <button
+                    key={item}
+                    onClick={() => setSelectedLeft(item)}
+                    className={`w-full py-2 border rounded ${
+                      selectedLeft === item
+                        ? "bg-blue-200"
+                        : "hover:bg-gray-100"
+                    }`}
+                  >
+                    {item}
+                  </button>
+                ))}
+              </div>
+              {/* Cột phải */}
+              <div className="space-y-2">
+                {rightItems.map((item) => (
+                  <button
+                    key={item}
+                    onClick={async () => {
+                      if (!selectedLeft) return;
+
+                      // check if this left|right pair is one of the correct ones
+                      const isPairCorrect = currentExercise.options.some(
+                        (o) => {
+                          const [l, r] = o.option_text
+                            .split("|")
+                            .map((s) => s.trim());
+                          return l === selectedLeft && r === item;
+                        }
+                      );
+
+                      if (isPairCorrect) {
+                        // correct: record it and remove from both columns
+                        setMatchedPairs((prev) => [
+                          ...prev,
+                          { left: selectedLeft, right: item },
+                        ]);
+                        setLeftItems((prev) =>
+                          prev.filter((l) => l !== selectedLeft)
+                        );
+                        setRightItems((prev) => prev.filter((r) => r !== item));
+                        toast.success("Correct match!");
+                      } else {
+                        // wrong: immediate feedback, lose a heart
+                        toast.error("Incorrect match!");
+                        const newHearts = Math.max(hearts - 1, 0);
+                        setHearts(newHearts);
+                        if (currentUser) {
+                          await updateHeart({
+                            userId: currentUser.user_id,
+                            heartsCount: newHearts,
+                          });
+                        }
+                        if (newHearts === 0) {
+                          alert("No more hearts—back to main screen.");
+                          navigate(`/learn/${lesson.Course.language_id}`);
+                          return;
+                        }
+                      }
+
+                      // reset selection
+                      setSelectedLeft(null);
+                    }}
+                    className={`w-full py-2 border rounded ${
+                      selectedLeft === item
+                        ? "bg-gray-100"
+                        : "hover:bg-gray-100"
+                    }`}
+                  >
+                    {item}
+                  </button>
+                ))}
+              </div>
+            </div>
           ) : (
-            // --- Fill in the blank UI ---
+            // --- Fill in the Blank ---
             <>
               <div className="flex gap-2 flex-wrap">
                 {filledWords.map((w, i) => (
@@ -421,11 +545,11 @@ const Lesson = () => {
           <button
             onClick={() => handleResponse(selectedAnswer)}
             className={
-              // với multiple choice: check selectedAnswer
-              // với fill-in: check đã điền đầy blanks (không còn "")
               (
                 typeName === "multiple_choice"
                   ? selectedAnswer !== null
+                  : typeName === "matching"
+                  ? matchedPairs.length === currentExercise.options.length
                   : !filledWords.includes("")
               )
                 ? "grow rounded-2xl border-b-4 border-green-600 bg-green-500 p-3 font-bold uppercase text-white sm:min-w-[150px] sm:max-w-fit"
@@ -434,6 +558,8 @@ const Lesson = () => {
             disabled={
               typeName === "multiple_choice"
                 ? selectedAnswer === null
+                : typeName === "matching"
+                ? matchedPairs.length !== currentExercise.options.length
                 : filledWords.includes("")
             }
           >
