@@ -1,6 +1,6 @@
 import Navbar from "./components/Navbar";
 import { Routes, Route } from "react-router-dom";
-import Learn from "./pages/Learn";
+import Learn from "./pages/learn";
 import Lesson from "./pages/lesson";
 import Home from "./pages/index";
 import LoginScreen from "./pages/LoginScreen";
