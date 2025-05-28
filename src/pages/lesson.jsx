@@ -3,12 +3,14 @@ import {
   BigCloseSvg,
   CloseSvg,
   DoneSvg,
-  LessonFastForwardStartSvg,
   LessonTopBarEmptyHeart,
   LessonTopBarHeart,
 } from "../components/Svgs";
-import { Link, useLocation, useNavigate, useParams } from "react-router-dom";
-import { getLessonDetail } from "../services/Lessons/lessonService";
+import { useLocation, useNavigate, useParams } from "react-router-dom";
+import {
+  getLessonDetail,
+  voiceRequest,
+} from "../services/Lessons/lessonService";
 import { completeLesson } from "../services/UserProgress/UserProgressService";
 import { chatAI } from "../services/AI/chatService";
 import { toast } from "react-toastify";
@@ -43,7 +45,7 @@ const Lesson = () => {
 
   const [correctAnswerCount, setCorrectAnswerCount] = useState(0);
   const [questionResults, setQuestionResults] = useState([]);
-
+  const [canCheckSpeaking, setCanCheckSpeaking] = useState(false);
   const [lessonComplete, setLessonComplete] = useState(false);
   const [reviewLessonShown, setReviewLessonShown] = useState(false);
 
@@ -57,12 +59,16 @@ const Lesson = () => {
   const [rightItems, setRightItems] = useState([]); // danh sách từ bên phải (đã xáo trộn)
   const [selectedLeft, setSelectedLeft] = useState(null); // từ trái đang chọn
   const [matchedPairs, setMatchedPairs] = useState([]); // cặp người dùng vừa ghép
-
   const currentExercise = lesson?.exercises?.[currentQuestionIndex] ?? null;
-
   const typeName = currentExercise?.exerciseType.exercise_type_name;
-
   const audioRef = useRef(null);
+
+  const [recording, setRecording] = useState(false);
+  const mediaRecorderRef = useRef(null);
+  const [audioURL, setAudioURL] = useState(null);
+  const [audioBlob, setAudioBlob] = useState(null);
+  const [transcriptResult, setTranscriptResult] = useState(null);
+  const [feedbackResult, setFeedbackResult] = useState(null);
 
   const playAudio = (rate = 1) => {
     if (!audioRef.current) return;
@@ -71,6 +77,26 @@ const Lesson = () => {
     audioRef.current.playbackRate = rate;
     audioRef.current.play();
   };
+
+  // 1) Tính xem nút Check có được enable không
+  const isCheckDisabled = (() => {
+    if (typeName === "speaking") {
+      return !canCheckSpeaking;
+    }
+    if (typeName === "multiple_choice") {
+      return selectedAnswer === null;
+    }
+    if (typeName === "matching") {
+      return matchedPairs.length !== currentExercise.options.length;
+    }
+    // fill_in_the_blank, listening
+    return filledWords.includes("");
+  })();
+
+  // 2) Chọn class dựa trên disabled
+  const checkBtnClass = isCheckDisabled
+    ? "grow rounded-2xl bg-gray-200 p-3 font-bold uppercase text-gray-400 sm:min-w-[150px] sm:max-w-fit"
+    : "grow rounded-2xl border-b-4 border-green-600 bg-green-500 p-3 font-bold uppercase text-white sm:min-w-[150px] sm:max-w-fit";
 
   useEffect(() => {
     getCurrentUser()
@@ -166,6 +192,7 @@ const Lesson = () => {
 
     // 1.3 kiểm tra đúng/sai
     let isCorrect = false;
+
     if (typeName === "multiple_choice") {
       const correctIndex = currentExercise.options.findIndex(
         (o) => o.is_correct
@@ -194,6 +221,9 @@ const Lesson = () => {
         correctPairs.some(([l, r]) => l === p.left && r === p.right)
       );
       yourResponse = matchedPairs.map((p) => `${p.left}|${p.right}`).join(",");
+    } else if (typeName === "speaking") {
+      isCorrect = feedbackResult?.isCorrect;
+      yourResponse = transcriptResult || "";
     }
 
     setIsAnswerCorrect(isCorrect);
@@ -256,6 +286,62 @@ const Lesson = () => {
     } else {
       endTime.current = Date.now();
       setLessonComplete(true);
+    }
+  };
+
+  // Bắt đầu ghi âm
+  const startRecording = async () => {
+    try {
+      const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+      const recorder = new MediaRecorder(stream);
+      mediaRecorderRef.current = recorder;
+      const chunks = [];
+
+      recorder.ondataavailable = (e) => chunks.push(e.data);
+      recorder.onstop = () => {
+        const blob = new Blob(chunks, { type: "audio/mp3" });
+        setAudioBlob(blob);
+        setAudioURL(URL.createObjectURL(blob));
+      };
+
+      recorder.start();
+      setRecording(true);
+    } catch (err) {
+      console.error("Cannot start recording:", err);
+      alert("Không thể truy cập microphone");
+    }
+  };
+
+  // Dừng ghi âm
+  const stopRecording = () => {
+    mediaRecorderRef.current?.stop();
+    setRecording(false);
+  };
+
+  const handleSubmitRecording = async () => {
+    if (!audioBlob) return alert("Bạn chưa ghi âm!");
+
+    // Lấy expectedText từ option
+    const correctOption = currentExercise.options.find((o) => o.is_correct);
+    const expectedText = correctOption
+      ? correctOption.option_text.trim()
+      : currentExercise.answer;
+
+    try {
+      const result = await voiceRequest(audioBlob, expectedText);
+      setTranscriptResult(result.transcript);
+      setFeedbackResult({
+        expectedText,
+        accuracy: result.accuracy,
+        overallConfidence: result.overallConfidence,
+        isCorrect: result.isCorrect,
+      });
+
+      // BẬT nút Check nếu bạn phát âm đúng
+      setCanCheckSpeaking(result.isCorrect);
+    } catch (err) {
+      console.error(err);
+      alert("Lỗi khi đánh giá bài nói");
     }
   };
 
@@ -499,6 +585,73 @@ const Lesson = () => {
                 ))}
               </div>
             </div>
+          ) : typeName === "speaking" ? (
+            // --- Speaking ---
+            <div className="flex flex-col items-center gap-4">
+              <div className="flex flex-col items-center gap-4">
+                <h2 className="text-xl font-semibold">
+                  {currentExercise.question_content}
+                </h2>
+
+                {/* Ghi âm */}
+                {!recording ? (
+                  <button
+                    onClick={startRecording}
+                    className="px-6 py-3 bg-green-500 text-white rounded-lg hover:bg-green-600"
+                  >
+                    🎤 Start Recording
+                  </button>
+                ) : (
+                  <button
+                    onClick={stopRecording}
+                    className="px-6 py-3 bg-red-500 text-white rounded-lg hover:bg-red-600"
+                  >
+                    🛑 Stop Recording
+                  </button>
+                )}
+
+                {/* Nghe lại */}
+                {audioURL && <audio src={audioURL} controls className="mt-4" />}
+
+                {/* Gửi lên backend */}
+                {audioBlob && !recording && (
+                  <button
+                    onClick={handleSubmitRecording}
+                    className="mt-4 px-6 py-3 bg-blue-500 text-white rounded-lg hover:bg-blue-600"
+                  >
+                    📤 Submit
+                  </button>
+                )}
+
+                {feedbackResult && (
+                  <div className="mt-6 w-full max-w-md p-4 bg-gray-100 rounded-lg">
+                    <p>
+                      <strong>Transcript:</strong>{" "}
+                      {transcriptResult || "No speech detected"}
+                    </p>
+                    <p>
+                      <strong>Expected:</strong> {feedbackResult.expectedText}
+                    </p>
+                    <p>
+                      <strong>Accuracy:</strong>{" "}
+                      {(feedbackResult.accuracy * 100).toFixed(1)}%
+                    </p>
+                    <p>
+                      <strong>Confidence:</strong>{" "}
+                      {(feedbackResult.overallConfidence * 100).toFixed(1)}%
+                    </p>
+                    <p>
+                      <strong>Result:</strong>{" "}
+                      {feedbackResult.isCorrect ? (
+                        <span className="text-green-600">Correct ✅</span>
+                      ) : (
+                        <span className="text-red-600">Incorrect ❌</span>
+                      )}
+                    </p>
+                  </div>
+                )}
+              </div>
+            </div>
           ) : (
             // --- Fill in the Blank ---
             <>
@@ -543,25 +696,11 @@ const Lesson = () => {
             Skip
           </button>
           <button
-            onClick={() => handleResponse(selectedAnswer)}
-            className={
-              (
-                typeName === "multiple_choice"
-                  ? selectedAnswer !== null
-                  : typeName === "matching"
-                  ? matchedPairs.length === currentExercise.options.length
-                  : !filledWords.includes("")
-              )
-                ? "grow rounded-2xl border-b-4 border-green-600 bg-green-500 p-3 font-bold uppercase text-white sm:min-w-[150px] sm:max-w-fit"
-                : "grow rounded-2xl bg-gray-200 p-3 font-bold uppercase text-gray-400 sm:min-w-[150px] sm:max-w-fit"
+            onClick={() =>
+              handleResponse(typeName === "speaking" ? null : selectedAnswer)
             }
-            disabled={
-              typeName === "multiple_choice"
-                ? selectedAnswer === null
-                : typeName === "matching"
-                ? matchedPairs.length !== currentExercise.options.length
-                : filledWords.includes("")
-            }
+            disabled={isCheckDisabled}
+            className={checkBtnClass}
           >
             Check
           </button>
