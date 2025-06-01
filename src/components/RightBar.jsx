@@ -43,7 +43,7 @@ export const RightBar = ({ refreshCount }) => {
   const [now, setNow] = useState(dayjs());
 
   const currentUser = useSelector((state) => state.user.currentUser);
-  const isVip = currentUser?.is_vip === 1;
+  const isVip = currentUser?.is_vip === true;
   // const streak = currentUser?.streak_count || 0;
 
   const [streak, setStreak] = useState(0);

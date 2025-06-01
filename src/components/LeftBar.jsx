@@ -49,7 +49,7 @@ export const LeftBar = ({ selectedTab }) => {
   return (
     <>
       <nav className="fixed bottom-0 left-0 top-0 hidden flex-col gap-5 border-r-2 border-[#e5e5e5] bg-white p-3 md:flex lg:w-64 lg:p-5">
-        {currentUser.is_vip === 1 ? (
+        {currentUser.is_vip === true ? (
           <img
             src="/sp1.png"
             alt="VIP Logo"

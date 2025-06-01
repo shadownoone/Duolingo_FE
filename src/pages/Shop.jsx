@@ -20,7 +20,7 @@ function Shop() {
       .then((res) => {
         if (res.code === 0) {
           setHeartsCount(res.data.hearts_count || 0);
-          setIsVip(res.data.is_vip === 1);
+          setIsVip(res.data.is_vip === true);
         }
       })
       .catch(console.error);

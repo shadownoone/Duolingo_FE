@@ -62,7 +62,7 @@ export default function Leaderboards() {
   const navigate = useNavigate();
   const [activeIndex, setActiveIndex] = useState(0);
   const currentUser = useSelector((state) => state.user.currentUser);
-  const isVip = currentUser?.is_vip === 1;
+  const isVip = currentUser?.is_vip === true;
   const currentLanguage = useSelector(
     (state) => state.language.currentLanguage
   );
@@ -240,7 +240,7 @@ export default function Leaderboards() {
                 className={[
                   "flex items-center justify-center rounded-full p-1",
                   "h-32 w-32",
-                  selectedUser.is_vip === 1
+                  selectedUser.is_vip === true
                     ? "ring-4 ring-cyan-400 ring-offset-2 ring-offset-white shadow-lg"
                     : "border-2 border-dashed border-gray-400",
                 ].join(" ")}
@@ -327,7 +327,7 @@ export default function Leaderboards() {
                   <div
                     key={i}
                     className={`flex gap-2 rounded-2xl p-4 border-2 ${
-                      selectedUser.is_vip === 1
+                      selectedUser.is_vip === true
                         ? "border-blue-300 bg-blue-50"
                         : "border-gray-200 bg-white"
                     }`}
@@ -336,7 +336,7 @@ export default function Leaderboards() {
                     <div className="flex flex-col">
                       <span
                         className={`text-xl font-bold ${
-                          selectedUser.is_vip === 1
+                          selectedUser.is_vip === true
                             ? "text-blue-600"
                             : "text-gray-900"
                         }`}
@@ -345,7 +345,7 @@ export default function Leaderboards() {
                       </span>
                       <span
                         className={`text-sm ${
-                          selectedUser.is_vip === 1
+                          selectedUser.is_vip === true
                             ? "text-blue-500"
                             : "text-gray-400"
                         }`}

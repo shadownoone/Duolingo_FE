@@ -66,7 +66,7 @@ const Profile = () => {
 
   const currentUser = useSelector((state) => state.user.currentUser);
 
-  const isVip = currentUser?.is_vip === 1;
+  const isVip = currentUser?.is_vip === true;
   if (!currentUser) {
     return <LoginScreen />;
   }
