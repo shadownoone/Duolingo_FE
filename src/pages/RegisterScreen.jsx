@@ -48,7 +48,7 @@ const Register = () => {
         last_name: lastName,
         password,
       });
-      if (data.code === 1) {
+      if (data.code === 0) {
         alert("Đăng ký thành công! Chuyển đến trang đăng nhập.");
         navigate("/login");
       } else {

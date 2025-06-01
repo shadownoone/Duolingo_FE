@@ -254,21 +254,40 @@ const Lesson = () => {
   };
 
   const onFinish = () => {
-    // 1. Tạo chuỗi đáp án đúng từ tất cả các option.is_correct
+    // 1. Tạo chuỗi đáp án đúng
     const correctSequence = currentExercise.options
       .filter((o) => o.is_correct)
       .map((o) => o.option_text)
       .join(" ");
 
-    // 2. Tạo câu người dùng đã điền / chọn
-    const yourResponse =
-      typeName === "multiple_choice"
-        ? selectedAnswer !== null
-          ? currentExercise.options[selectedAnswer].option_text
-          : ""
-        : filledWords.join(" ");
+    // 2. Tạo câu người dùng đã điền / chọn dựa trên từng loại bài (typeName)
+    let yourResponse = "";
 
-    // 3. Đẩy vào questionResults với full correctSequence
+    if (typeName === "multiple_choice") {
+      // Nếu là lựa chọn (multiple choice), lấy text của đáp án được chọn
+      yourResponse =
+        selectedAnswer !== null
+          ? currentExercise.options[selectedAnswer].option_text
+          : "";
+    } else if (typeName === "translation") {
+      // Nếu là dịch (translation), lấy đúng giá trị từ ô textarea
+      yourResponse = translationInput.trim();
+    } else if (typeName === "fill_in_the_blank" || typeName === "listening") {
+      // Nếu là điền từ (fill_in_the_blank) hoặc nghe rồi điền (listening)
+      // thì ghép các từ người dùng đã chọn (filledWords)
+      yourResponse = filledWords.join(" ").trim();
+    } else if (typeName === "matching") {
+      // Nếu là ghép đôi (matching), nối các cặp đã match thành chuỗi L|R
+      yourResponse = matchedPairs.map((p) => `${p.left}|${p.right}`).join(", ");
+    } else if (typeName === "speaking") {
+      // Nếu là nói (speaking), lấy transcript kết quả (nếu có)
+      yourResponse = transcriptResult || "";
+    } else {
+      // Nếu sau này có thêm typeName mới, anh có thể tiếp tục bổ sung ở đây
+      yourResponse = "";
+    }
+
+    // 3. Đẩy kết quả câu hỏi hiện tại vào questionResults
     setQuestionResults((prev) => [
       ...prev,
       {
@@ -278,12 +297,19 @@ const Lesson = () => {
       },
     ]);
 
-    // 4. Reset và next
+    // 4. Sau khi lưu kết quả, reset những state liên quan để chuẩn bị cho câu tiếp theo
     setSelectedAnswer(null);
+    setTranslationInput("");
+    setFilledWords([]);
+    setMatchedPairs([]);
+    setSelectedLeft(null);
     setCorrectAnswerShown(false);
+
+    // 5. Nếu chưa phải là câu cuối cùng, chuyển sang câu kế tiếp
     if (currentQuestionIndex < lesson.exercises.length - 1) {
       setCurrentQuestionIndex((i) => i + 1);
     } else {
+      // 6. Nếu đã là câu cuối, kết thúc bài và tính thời gian
       endTime.current = Date.now();
       setLessonComplete(true);
     }
@@ -915,98 +941,182 @@ const ReviewLesson = ({
 
 const ChatBox = ({ exercise_id }) => {
   const [isOpen, setIsOpen] = useState(false);
-  const [messages, setMessages] = useState([]);
+  const [messages, setMessages] = useState([]); // mảng { sender: "user"|"bot", text: string }
   const [inputMessage, setInputMessage] = useState("");
+  const messagesEndRef = useRef(null);
 
-  // Toggle chatbox visibility
+  // Tự động cuộn xuống cuối mỗi khi messages thay đổi
+  useEffect(() => {
+    if (messagesEndRef.current) {
+      messagesEndRef.current.scrollIntoView({ behavior: "smooth" });
+    }
+  }, [messages]);
+
+  // Toggle mở/đóng chat box
   const toggleChat = () => {
-    setIsOpen(!isOpen);
+    setIsOpen((prev) => !prev);
   };
 
   const handleSendMessage = async () => {
-    if (!inputMessage.trim()) return;
+    const trimmed = inputMessage.trim();
+    if (!trimmed) return;
 
-    // Add the user's message to the messages state
-    setMessages([...messages, { sender: "user", text: inputMessage }]);
-
-    // Clear the input field
+    // Thêm tin nhắn của user lên đầu tiên
+    setMessages((prev) => [...prev, { sender: "user", text: trimmed }]);
     setInputMessage("");
 
-    // Check if exercise_id is available
     if (!exercise_id) {
       console.error("exercise_id is missing");
+      // Thêm message lỗi tạm thời
+      setMessages((prev) => [
+        ...prev,
+        { sender: "bot", text: "Lỗi: thiếu exercise_id" },
+      ]);
       return;
     }
 
     try {
-      // Call chatAI to get a response from the backend
-      const response = await chatAI(inputMessage, exercise_id);
-      setMessages((prevMessages) => [
-        ...prevMessages,
-        { sender: "bot", text: response.reply.text },
-      ]);
+      // Gọi API backend để lấy trả lời
+      const response = await chatAI(trimmed, exercise_id);
+      // response.reply.text chứa nội dung bot trả về
+      const botText = response.reply?.text || "Không có phản hồi từ AI.";
+      setMessages((prev) => [...prev, { sender: "bot", text: botText }]);
     } catch (error) {
       console.error("Error while chatting with AI:", error);
-      setMessages((prevMessages) => [
-        ...prevMessages,
-        { sender: "bot", text: "Sorry, there was an error. Please try again." },
+      setMessages((prev) => [
+        ...prev,
+        {
+          sender: "bot",
+          text: "Xin lỗi, có lỗi xảy ra. Vui lòng thử lại sau.",
+        },
       ]);
     }
   };
 
-  return (
-    <div>
-      {/* Floating chat icon */}
-      <div
-        className={`fixed bottom-5 right-5 bg-blue-500 text-white p-3 rounded-full cursor-pointer shadow-lg ${
-          isOpen ? "hidden" : ""
-        }`}
-        onClick={toggleChat}
-      >
-        <span>Chat</span>
-      </div>
+  // Khi nhấn Enter trong ô input thì gửi tin nhắn
+  const handleKeyDown = (e) => {
+    if (e.key === "Enter" && !e.shiftKey) {
+      e.preventDefault();
+      handleSendMessage();
+    }
+  };
 
-      {/* Chatbox */}
+  return (
+    <div className="fixed bottom-6 right-6 z-50 flex flex-col items-end">
+      {/* Nút chat (icon/hình tròn) */}
+      {!isOpen && (
+        <button
+          onClick={toggleChat}
+          aria-label="Open chat"
+          className="
+            w-14 h-14 flex items-center justify-center
+            bg-blue-600 text-white rounded-full
+            shadow-xl hover:bg-blue-700 focus:outline-none
+          "
+        >
+          {/* Có thể thay bằng icon chat (SVG hoặc font) */}
+          <svg
+            xmlns="http://www.w3.org/2000/svg"
+            className="h-7 w-7"
+            fill="none"
+            viewBox="0 0 24 24"
+            stroke="currentColor"
+          >
+            <path
+              strokeLinecap="round"
+              strokeLinejoin="round"
+              strokeWidth={2}
+              d="M8 10h.01M12 10h.01M16 10h.01M21 12c0 4.418-4.03 8-9 8a9.864 9.864 0 01-4-.83L3 21l1.79-4.21A7.955 7.955 0 013 12c0-4.418 4.03-8 9-8s9 3.582 9 8z"
+            />
+          </svg>
+        </button>
+      )}
+
+      {/* Chatbox nếu isOpen === true */}
       {isOpen && (
-        <div className="fixed bottom-5 right-5 bg-white p-5 rounded-lg shadow-lg w-80 h-96">
-          <div className="flex justify-between items-center">
-            <h3 className="text-xl font-bold">Chat with us</h3>
-            <button onClick={toggleChat}>X</button>
+        <div
+          className="
+            mt-2 flex flex-col w-80 h-[520px]
+            bg-white rounded-lg shadow-2xl
+            overflow-hidden
+            transition-all duration-300 ease-in-out
+          "
+        >
+          {/* Header */}
+          <div className="flex justify-between items-center bg-blue-600 px-4 py-2">
+            <h3 className="text-white text-lg font-semibold">Chat với AI</h3>
+            <button
+              onClick={toggleChat}
+              className="text-white hover:text-gray-200"
+              aria-label="Close chat"
+            >
+              &times;
+            </button>
           </div>
 
-          {/* Messages */}
-          <div className="overflow-y-auto max-h-72 my-4">
-            {messages.map((msg, index) => (
+          {/* Nội dung tin nhắn */}
+          <div className="flex-1 overflow-y-auto px-3 py-2 bg-gray-50">
+            {messages.length === 0 && (
+              <p className="text-gray-400 text-sm text-center mt-10">
+                Chào bạn! Hãy nhập tin nhắn để bắt đầu.
+              </p>
+            )}
+            {messages.map((msg, idx) => (
               <div
-                key={index}
-                className={msg.sender === "user" ? "text-right" : "text-left"}
+                key={idx}
+                className={`
+                  mb-3 flex 
+                  ${msg.sender === "user" ? "justify-end" : "justify-start"}
+                `}
               >
-                <p
-                  className={`p-2 ${
-                    msg.sender === "user" ? "bg-blue-100" : "bg-gray-100"
-                  }`}
+                <div
+                  className={`
+                    max-w-[70%] break-words
+                    px-3 py-2 rounded-lg
+                    ${
+                      msg.sender === "user"
+                        ? "bg-blue-500 text-white rounded-br-none"
+                        : "bg-gray-200 text-gray-800 rounded-bl-none"
+                    }
+                  `}
                 >
                   {msg.text}
-                </p>
+                </div>
               </div>
             ))}
+            {/* Dummy div để scroll vào đây */}
+            <div ref={messagesEndRef} />
           </div>
 
-          {/* Message input */}
-          <div className="flex items-center">
-            <input
-              type="text"
-              value={inputMessage}
-              onChange={(e) => setInputMessage(e.target.value)}
-              className="border-2 border-gray-300 rounded-lg p-2 flex-grow"
-              placeholder="Type a message..."
-            />
-            <button
-              className="ml-2 bg-blue-500 text-white px-4 py-2 rounded-lg"
-              onClick={handleSendMessage}
-            >
-              Send
-            </button>
+          {/* Input và nút Send */}
+          <div className="px-3 py-2 bg-white border-t border-gray-200">
+            <div className="flex items-center space-x-2">
+              <textarea
+                rows={1}
+                value={inputMessage}
+                onChange={(e) => setInputMessage(e.target.value)}
+                onKeyDown={handleKeyDown}
+                placeholder="Nhập tin nhắn..."
+                className="
+                  flex-grow resize-none 
+                  border border-gray-300 rounded-xl 
+                  px-3 py-2 text-gray-700 
+                  focus:outline-none focus:ring-2 focus:ring-blue-400 
+                  max-h-24
+                "
+              />
+              <button
+                onClick={handleSendMessage}
+                className="
+                  bg-blue-600 text-white 
+                  px-4 py-2 rounded-xl 
+                  hover:bg-blue-700 
+                  focus:outline-none
+                "
+              >
+                Gửi
+              </button>
+            </div>
           </div>
         </div>
       )}

@@ -14,6 +14,7 @@ import { getCurrentUser } from "./services/Users/userService";
 import { useDispatch } from "react-redux";
 import { addCurrentUser } from "./features/user/userSlice";
 import NotFound from "./pages/notFound";
+import Vocabulary from "./pages/vocabulary";
 
 const App = () => {
   const dispatch = useDispatch();
@@ -43,6 +44,7 @@ const App = () => {
         <Route path="/shop" element={<Shop />} />
         <Route path="/profile" element={<Profile />} />
         <Route path="/leaderboard" element={<Leaderboards />} />
+        <Route path="/vocabulary" element={<Vocabulary />} />
         <Route path="/notfound" element={<NotFound />} />
       </Routes>
     </div>

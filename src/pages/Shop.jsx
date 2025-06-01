@@ -75,8 +75,15 @@ function Shop() {
                 </p>
                 <button
                   onClick={handleBuyHeart}
-                  disabled={loading || isMaxHearts}
-                  className="flex w-fit items-center gap-1 rounded-2xl border-2 border-gray-300 bg-white px-4 py-2 text-sm font-bold uppercase text-gray-700 cursor-pointer transition duration-150 ease-in-out hover:bg-gray-100 hover:border-gray-400 active:scale-95 active:bg-gray-200 disabled:opacity-50"
+                  disabled={loading} // Chỉ disable khi loading, không disable khi full
+                  className={`flex w-fit items-center gap-1 rounded-2xl border-2 border-gray-300 bg-white px-4 py-2 text-sm font-bold uppercase text-gray-700 cursor-pointer transition duration-150 ease-in-out
+     ${
+       isMaxHearts
+         ? "opacity-50"
+         : "hover:bg-gray-100 hover:border-gray-400 active:scale-95 active:bg-gray-200"
+     }
+     ${loading ? "opacity-50 cursor-wait" : ""}
+   `}
                 >
                   {isMaxHearts ? (
                     "Hearts full"
